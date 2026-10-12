@@ -216,6 +216,8 @@ var frozenContract = []routeProbe{
 	{"POST", "admin/users/probe-id/role", "既有"},
 	{"POST", "admin/users/probe-id/disable", "既有"},
 	{"POST", "admin/users/probe-id/enable", "既有"},
+	{"POST", "admin/users/probe-id/quota", "既有"},
+	{"POST", "admin/users/probe-id/whitelist", "既有"},
 	{"GET", "admin/password", "既有"},
 	{"POST", "admin/password", "既有"},
 	{"POST", "admin/dsh/start", "既有"},

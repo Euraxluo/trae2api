@@ -47,6 +47,9 @@ func (s *Server) listUsers(w http.ResponseWriter) {
 			"created_at":     u.CreatedAt,
 			"disabled":       u.Disabled,
 			"note":           u.Note,
+			"quota":          u.Quota,
+			"used_quota":     u.UsedQuota,
+			"model_whitelist": u.ModelWhitelist,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"object": "list", "data": out, "count": len(out)})
@@ -151,6 +154,32 @@ func (s *Server) handleUserAction(action string) http.HandlerFunc {
 				"id": u.ID, "username": u.Username, "api_key": u.APIKey,
 				"warning": "旧 API Key 已立即失效；新 Key 仅本次返回明文。",
 			})
+		case "quota":
+			var req struct {
+				Quota int64 `json:"quota"`
+			}
+			if err := decodeJSON(r, &req); err != nil {
+				writeOpenAIError(w, http.StatusBadRequest, "invalid_request", err.Error())
+				return
+			}
+			if err := s.users.SetQuota(id, req.Quota); err != nil {
+				writeOpenAIError(w, http.StatusBadRequest, "quota_update_failed", err.Error())
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"id": id, "quota": req.Quota})
+		case "whitelist":
+			var req struct {
+				Models []string `json:"models"`
+			}
+			if err := decodeJSON(r, &req); err != nil {
+				writeOpenAIError(w, http.StatusBadRequest, "invalid_request", err.Error())
+				return
+			}
+			if err := s.users.SetModelWhitelist(id, req.Models); err != nil {
+				writeOpenAIError(w, http.StatusBadRequest, "whitelist_update_failed", err.Error())
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"id": id, "model_whitelist": req.Models})
 		case "disable", "enable":
 			disabled := action == "disable"
 			if err := s.users.SetDisabled(id, disabled); err != nil {

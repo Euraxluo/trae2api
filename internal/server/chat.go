@@ -15,6 +15,7 @@ import (
 	"trae2api/internal/pool"
 	"trae2api/internal/realm"
 	"trae2api/internal/traectl"
+	"trae2api/internal/usermgr"
 )
 
 // 本文件实现 OpenAI 兼容的 /v1/chat/completions：把 OpenAI 请求翻译成 Trae
@@ -272,6 +273,39 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeOpenAIError(w, http.StatusBadRequest, "invalid_request", "parse body: "+err.Error())
 		return
+	}
+
+	// 1. 模型别名解析（例如 gpt-4o -> trae:glm-5.3）
+	origModel := req.Model
+	if target, ok := s.cfg.ModelAliases[req.Model]; ok && target != "" {
+		req.Model = target
+	}
+
+	// 2. 检查租户/用户的模型白名单与剩余配额
+	caller := userFrom(r)
+	if caller != nil {
+		// 模型白名单检查（非管理员用户如果配置了白名单，则只允许使用白名单内的模型）
+		if caller.Role != usermgr.RoleAdmin && len(caller.ModelWhitelist) > 0 {
+			allowed := false
+			for _, m := range caller.ModelWhitelist {
+				if m == origModel || m == req.Model {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				writeOpenAIError(w, http.StatusForbidden, "model_not_allowed",
+					fmt.Sprintf("用户 %s 无权调用模型 %q（该 Key 已受模型白名单限制）", caller.Username, origModel))
+				return
+			}
+		}
+
+		// 预检配额（如果设置了配额且已耗尽）
+		if caller.Quota > 0 && caller.UsedQuota >= caller.Quota {
+			writeOpenAIError(w, http.StatusTooManyRequests, "insufficient_quota",
+				fmt.Sprintf("用户 %s 的配额已耗尽（上限: %d, 已用: %d）", caller.Username, caller.Quota, caller.UsedQuota))
+			return
+		}
 	}
 
 	realmKey, bareModel := realm.ResolveModel(req.Model)
@@ -636,9 +670,19 @@ func (s *Server) runChat(w http.ResponseWriter, r *http.Request, ch *Channel, ac
 		}
 		writeCompletion(w, bareModel, agg)
 		st.recordUsage(agg.Usage)
+		if u := userFrom(r); u != nil && s.users != nil && agg.Usage != nil {
+			s.users.DeductQuota(u.ID, int64(agg.Usage.TotalTokens))
+		}
 		return nil
 	}
-	return s.streamChat(w, r.Context(), cl, creq, bareModel, includeUsage, st)
+	err := s.streamChat(w, r.Context(), cl, creq, bareModel, includeUsage, st)
+	if err == nil || errors.Is(err, errAlreadyStreaming) {
+		tokens := st.promptTok + st.compTok
+		if u := userFrom(r); u != nil && s.users != nil && tokens > 0 {
+			s.users.DeductQuota(u.ID, tokens)
+		}
+	}
+	return err
 }
 
 // streamChat 流式输出（OpenAI SSE）。
@@ -887,6 +931,9 @@ func (s *Server) noteFailure(ch *Channel, a *pool.Account, model string, err err
 		case ue.Status == http.StatusUnauthorized:
 			s.pool.Cooldown(a.UID, pool.CoolHard, 24*time.Hour, "凭证失效（需重新登录客户端）")
 			s.logf("WARN: 账号 %s 凭证失效，已硬冷却（请在客户端重新登录）", a.UID)
+			if s.webhook != nil {
+				s.webhook.SendAlert("Trae 账号凭证失效", fmt.Sprintf("账号 %s 凭证已失效（收到 401 Unauthorized），已被硬冷却 24 小时，请尽快重新登录客户端刷新凭据。", a.UID), "error")
+			}
 			return
 		case ue.Status == http.StatusForbidden:
 			// 403 **不冷却任何东西**：它既不是账号的问题，也不是模型的问题，

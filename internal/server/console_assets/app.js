@@ -1564,6 +1564,19 @@ function renderAdminUsers(users) {
       : '<span class="font-mono text-xs text-slate-300">' + ownerAccountCount(u) + ' 个</span>';
     var idEsc = escapeHtml(u.id);
     var nameEsc = escapeHtml(u.username);
+
+    var quotaText = (u.quota && u.quota > 0)
+      ? '<span class="text-amber-400 font-semibold">' + fmtInt(u.used_quota || 0) + '</span> / <span class="text-slate-300">' + fmtInt(u.quota) + '</span>'
+      : '<span class="text-slate-400">无限制 (已用: ' + fmtInt(u.used_quota || 0) + ')</span>';
+    var quotaCell = '<div class="flex items-center gap-1.5"><span class="font-mono text-xs">' + quotaText + '</span> ' +
+      '<button onclick="adminSetQuota(\'' + idEsc + '\',\'' + nameEsc + '\',' + (u.quota || 0) + ')" class="text-[10px] text-indigo-400 hover:text-indigo-300 hover:underline">设额度</button></div>';
+
+    var wlText = (u.model_whitelist && u.model_whitelist.length)
+      ? '<span class="text-emerald-400 font-mono text-xs" title="' + escapeHtml(u.model_whitelist.join(', ')) + '">' + u.model_whitelist.length + ' 个限定</span>'
+      : '<span class="text-slate-400 text-xs">全部可用</span>';
+    var wlCell = '<div class="flex items-center gap-1.5">' + wlText + ' ' +
+      '<button onclick="adminSetWhitelist(\'' + idEsc + '\',\'' + nameEsc + '\')" class="text-[10px] text-cyan-400 hover:text-cyan-300 hover:underline">设置</button></div>';
+
     var ops = '<button onclick="adminResetPassword(\'' + idEsc + '\',\'' + nameEsc + '\')" class="text-xs text-indigo-400 hover:text-indigo-300 hover:underline">改密</button> ' +
       '<button onclick="adminResetKey(\'' + idEsc + '\',\'' + nameEsc + '\')" class="text-xs text-cyan-400 hover:text-cyan-300 hover:underline">换Key</button> ';
     if (isAdmin) {
@@ -1581,6 +1594,8 @@ function renderAdminUsers(users) {
       (u.note ? '<div class="text-[10px] text-slate-500 font-normal">' + escapeHtml(u.note) + '</div>' : '') + '</td>' +
       '<td class="px-4 py-3">' + roleBadge + '</td>' +
       '<td class="px-4 py-3">' + keyCell + '</td>' +
+      '<td class="px-4 py-3">' + quotaCell + '</td>' +
+      '<td class="px-4 py-3">' + wlCell + '</td>' +
       '<td class="px-4 py-3">' + acct + '</td>' +
       '<td class="px-4 py-3">' + statusBadge + '</td>' +
       '<td class="px-4 py-3 text-slate-400 text-[11px] font-sans">' + escapeHtml(created) + '</td>' +
@@ -1588,6 +1603,33 @@ function renderAdminUsers(users) {
       '</tr>';
   }
   tbody.innerHTML = html;
+}
+async function adminSetQuota(id, username, currentQuota) {
+  var val = prompt('设置用户 "' + username + '" 的 Token 总配额（填数字，0 或 -1 表示无限制）：', currentQuota > 0 ? currentQuota : '1000000');
+  if (val === null) return;
+  var q = parseInt(val.trim(), 10);
+  if (isNaN(q)) { toast('配额必须为有效数字', 'warn'); return; }
+  try {
+    await post('admin/users/' + encodeURIComponent(id) + '/quota', { quota: q });
+    toast('已成功更新用户 "' + username + '" 的配额', 'ok');
+    loadAdminUsers();
+  } catch (e) {
+    toast('更新配额失败：' + errText(e), 'err');
+  }
+}
+async function adminSetWhitelist(id, username) {
+  var u = rawAdminUsers.find(function (item) { return item.id === id; });
+  var cur = (u && u.model_whitelist) ? u.model_whitelist.join(', ') : '';
+  var val = prompt('设置用户 "' + username + '" 允许调用的模型列表（以逗号分隔，留空表示允许全部）：\n如: trae:glm-5.3-flash, trae:Doubao-Seed-2.1-Pro', cur);
+  if (val === null) return;
+  var arr = val.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  try {
+    await post('admin/users/' + encodeURIComponent(id) + '/whitelist', { models: arr });
+    toast('已成功更新用户 "' + username + '" 的模型白名单', 'ok');
+    loadAdminUsers();
+  } catch (e) {
+    toast('更新白名单失败：' + errText(e), 'err');
+  }
 }
 async function adminResetPassword(id, username) {
   var pw = prompt('请输入用户 "' + username + '" 的新登录密码（至少 6 位）：');

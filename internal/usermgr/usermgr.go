@@ -58,6 +58,13 @@ type User struct {
 	// Note 备注（便于识别用途，如"给 Cline 用"）。
 	Note string `json:"note,omitempty"`
 
+	// Quota 总额度（Token 计数）。-1 或 0 表示无限制。
+	Quota int64 `json:"quota,omitempty"`
+	// UsedQuota 已消耗额度（Token 计数）。
+	UsedQuota int64 `json:"used_quota,omitempty"`
+	// ModelWhitelist 允许调用的模型列表。空数组或 nil 表示允许调用全部模型。
+	ModelWhitelist []string `json:"model_whitelist,omitempty"`
+
 	// ---- 密码（PBKDF2-HMAC-SHA256）----
 	//
 	// PasswordHash 是派生密钥的 hex；**空字符串表示该用户没有密码**。
@@ -487,6 +494,58 @@ func (m *Manager) SetDisabled(id string, disabled bool) error {
 	}
 	u.Disabled = disabled
 	return m.saveLocked()
+}
+
+// SetQuota 设置用户的总配额（-1 或 0 表示无限制）。
+func (m *Manager) SetQuota(id string, quota int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	u, ok := m.byID[id]
+	if !ok {
+		return fmt.Errorf("usermgr: 用户不存在: %s", id)
+	}
+	u.Quota = quota
+	return m.saveLocked()
+}
+
+// SetModelWhitelist 设置用户的允许模型白名单（空表示不限制）。
+func (m *Manager) SetModelWhitelist(id string, models []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	u, ok := m.byID[id]
+	if !ok {
+		return fmt.Errorf("usermgr: 用户不存在: %s", id)
+	}
+	clean := make([]string, 0, len(models))
+	for _, mod := range models {
+		mod = strings.TrimSpace(mod)
+		if mod != "" {
+			clean = append(clean, mod)
+		}
+	}
+	u.ModelWhitelist = clean
+	return m.saveLocked()
+}
+
+// DeductQuota 尝试扣除指定用户的配额。如果配额受限且不足，返回 false。
+// delta 为本次消耗的 Token 数。
+func (m *Manager) DeductQuota(id string, delta int64) (bool, int64, int64) {
+	if delta <= 0 {
+		return true, 0, 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	u, ok := m.byID[id]
+	if !ok {
+		return true, 0, 0
+	}
+	// 如果设置了配额且大于 0
+	if u.Quota > 0 && (u.UsedQuota+delta > u.Quota) {
+		return false, u.Quota, u.UsedQuota
+	}
+	u.UsedQuota += delta
+	_ = m.saveLocked()
+	return true, u.Quota, u.UsedQuota
 }
 
 // ---- 密码（PBKDF2-HMAC-SHA256）----

@@ -126,6 +126,7 @@ type Server struct {
 
 	maxRotate     int
 	modelCooldown time.Duration
+	webhook       *WebhookNotifier
 
 	mu sync.RWMutex
 	// 运行时统计
@@ -231,6 +232,7 @@ func New(cfg *config.Config) (*Server, error) {
 		consoleSecret: newConsoleSecretStore(cfg.DataDir),
 		loginLimit:    newLoginLimiter(),
 		imports:       newImportValidator(),
+		webhook:       newWebhookNotifier(cfg.Webhook.URL, cfg.Webhook.Secret, cfg.Webhook.Enabled),
 		maxRotate:     3,
 		modelCooldown: modelCD,
 		startedAt:     time.Now(),
@@ -292,6 +294,7 @@ func (s *Server) handler() http.Handler {
 	// 对话入口先过 handleChatRouter：它只做一件事 —— 把虚拟智能体模型
 	// `model: dsh` 拦下来（见 dsh.go），其余请求原样交给 handleChat。
 	mux.HandleFunc("POST /v1/chat/completions", s.withAuth(s.handleChatRouter))
+	mux.HandleFunc("POST /v1/messages", s.withAuth(s.handleAnthropicMessages))
 	mux.HandleFunc("GET /status", s.withAuth(s.handleStatus))
 	mux.HandleFunc("GET /v1/credits", s.withAuth(s.handleCredits))
 	mux.HandleFunc("GET /v1/stats", s.withAuth(s.handleStats))
@@ -351,6 +354,8 @@ func (s *Server) handler() http.Handler {
 	mux.HandleFunc("POST /admin/users/{id}/role", s.withAuth(s.handleUserAction("role")))
 	mux.HandleFunc("POST /admin/users/{id}/disable", s.withAuth(s.handleUserAction("disable")))
 	mux.HandleFunc("POST /admin/users/{id}/enable", s.withAuth(s.handleUserAction("enable")))
+	mux.HandleFunc("POST /admin/users/{id}/quota", s.withAuth(s.handleUserAction("quota")))
+	mux.HandleFunc("POST /admin/users/{id}/whitelist", s.withAuth(s.handleUserAction("whitelist")))
 	mux.HandleFunc("POST /admin/users/{id}/reset-password", s.withAuth(s.handleUserResetPassword))
 
 	// 用户密码认证（见 auth.go）：注册 / 登录 / 登出 / 自助改密 / 自助换 Key。
@@ -434,7 +439,10 @@ func isAdmin(r *http.Request) bool {
 // 让 api_key 为空时的网关完全敞开。未创建用户时保持单机免密语义（零回归）。
 func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		key := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		key := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if key == "" {
+			key = strings.TrimSpace(r.Header.Get("x-api-key"))
+		}
 		hasUsers := s.users != nil && s.users.Count() > 0
 
 		// 1) 用户专属 Key

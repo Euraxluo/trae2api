@@ -229,6 +229,18 @@ type Config struct {
 		// MaxFiles 单次请求文件数上限，默认 16。
 		MaxFiles int `json:"max_files"`
 	} `json:"files"`
+
+	// ModelAliases 模型别名与重定向映射（例如 "gpt-4o": "trae:glm-5.3", "claude-3-7-sonnet": "trae:kimi-k3"）。
+	ModelAliases map[string]string `json:"model_aliases"`
+
+	Webhook struct {
+		// Enabled 是否启用告警推送。
+		Enabled bool `json:"enabled"`
+		// URL 接收 Webhook 通知的地址（兼容飞书、企业微信、钉钉机器人或标准 HTTP POST）。
+		URL string `json:"url"`
+		// Secret 签名密钥（可选）。
+		Secret string `json:"secret"`
+	} `json:"webhook"`
 }
 
 // Default 返回内置默认配置。
