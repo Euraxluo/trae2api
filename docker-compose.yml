@@ -1,0 +1,67 @@
+# Trae2Api —— Docker Compose 部署
+#
+# 直接使用 docker compose，不要包一层脚本（脚本会藏掉 docker 的原始报错，
+# 也会把宿主 UID 一类环境相关的值固化进去）。
+#
+# 用法：
+#   docker compose up -d --build
+#   docker compose logs -f --tail=100
+#   docker compose down
+#
+# 前提：把 Trae 客户端的 globalStorage 目录准备好（见下方 volumes 注释）。
+
+services:
+  trae2api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # 需要与宿主 UID 对齐时才传（绑定挂载场景）。
+      # ⚠️ 不要传 1000：alpine 里没有 1000 号用户，但很多基础镜像已占用它；
+      #    本项目默认用 10001，绑定挂载到宿主时通常也不需要改（见 README）。
+      # args:
+      #   APP_UID: "10001"
+      #   APP_GID: "10001"
+
+    # 不设 container_name：让 Compose 自动加项目名前缀，
+    # 避免同机多份 compose 部署时撞名（见 docker skill 8.1）。
+    image: trae2api:local
+
+    # 对外端口可覆盖：APP_PORT=18080 docker compose up -d
+    # 刻意避开 8080（面板/代理/测试服务都爱用它，撞车概率高）。
+    ports:
+      - "${APP_PORT:-17870}:7870"
+
+    environment:
+      # 签到定时任务按本地时间计算，必须给时区（镜像里已装 tzdata）
+      TZ: "${TZ:-Asia/Shanghai}"
+
+    volumes:
+      # ── 凭据目录（**必须可写**）──
+      # 续期会轮换 refreshToken，网关必须能把新 token 写回 storage.json，
+      # 否则容器重启后就拿旧 refreshToken 去换、必然失败。
+      # 因此这里**不能**加 :ro。
+      #
+      # 需要挂载的文件（Windows 宿主示例，把 <用户> 换成实际用户名）：
+      #   %APPDATA%\Trae CN\User\globalStorage\        → ./secrets/trae-cn/
+      #   %APPDATA%\TRAE SOLO CN\User\globalStorage\   → ./secrets/solo-cn/
+      #
+      # 挂整个 globalStorage 目录（而不是只挂 storage.json）是有意的：
+      # 模型目录 state.vscdb 也在同一目录下，网关从凭据路径的**同级**推导它。
+      - ./secrets/trae-cn:/trae/trae-cn
+      - ./secrets/solo-cn:/trae/solo-cn
+
+      # ── 运行时状态（冷却/熔断快照 + 用户与 API Key）──
+      # 用命名卷而非绑定挂载：命名卷首次创建时会继承镜像里 /app/data 的属主
+      # （镜像里已 chown 给 10001），因此非 root 进程天然可写，不需要在宿主上
+      # 处理 UID 对齐问题。
+      - trae2api-data:/app/data
+
+    restart: unless-stopped
+
+    # 容器内 127.0.0.1 指容器自己。若将来需要访问宿主上的服务，
+    # 用 host.docker.internal 并保留下面这行（Linux 上需要它才能解析）：
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  trae2api-data: {}

@@ -1,0 +1,109 @@
+name: Release
+
+# 触发：推 tag（如 v0.2.0）或手动。
+#
+# 刻意**只**在 tag 上发布：每次 push 都发版会让 release 列表被噪音淹没，
+# 而且用户无法判断哪个版本"该用"。
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 tag（如 v0.2.0）；手动触发时必填"
+        required: true
+
+permissions:
+  contents: write # 创建 Release 需要
+
+jobs:
+  release:
+    name: 交叉编译并发布
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: 发布前先跑测试
+        # 发布不该建立在未验证的代码上 —— 即便 CI 已经跑过，
+        # 也防止 tag 打在了绕过 CI 的提交上。
+        run: go test -timeout 300s ./...
+
+      - name: 确定版本号
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 交叉编译全部平台
+        env:
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # 版本号注入二进制：用 -X 覆盖 var（本项目暂无版本变量时是空操作，
+          # 保留它是为了让构建命令在加了版本变量之后无需再改）
+          LDFLAGS="-s -w"
+          for target in \
+            linux/amd64 linux/arm64 linux/arm \
+            windows/amd64 windows/arm64 \
+            darwin/amd64 darwin/arm64
+          do
+            goos="${target%%/*}"; goarch="${target##*/}"
+            ext=""
+            [ "$goos" = "windows" ] && ext=".exe"
+            out="dist/trae2api-${goos}-${goarch}${ext}"
+            echo "构建 $out"
+            GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "$LDFLAGS" -o "$out" ./cmd/trae2api
+          done
+          # 打包（tar.gz / zip），附带 README 与示例配置
+          cd dist
+          for f in trae2api-*; do
+            case "$f" in
+              *.exe) zip -q "${f%.exe}.zip" "$f" ../README.md ../docker/config.docker.json ;;
+              *)     tar -czf "$f.tar.gz" "$f" -C .. README.md docker/config.docker.json ;;
+            esac
+          done
+          ls -lh
+          # 校验和：让用户能验证下载的二进制没被篡改
+          sha256sum trae2api-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Trae2Api ${{ steps.ver.outputs.tag }}
+          draft: false
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS
+          body: |
+            ## 安装
+
+            下载对应平台的压缩包，解压后直接运行（零第三方依赖，无需运行时）：
+
+            ```bash
+            ./trae2api serve            # 首次运行会生成 config.json
+            ```
+
+            默认监听 `127.0.0.1:7870`，控制台在 `http://127.0.0.1:7870/`。
+
+            ## 校验
+
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+
+            > ⚠️ 本项目需要本机已登录 Trae CN / TRAE SOLO CN 客户端来读取凭据；
+            > 也可在别处导出便携快照后导入，从而脱离客户端运行。

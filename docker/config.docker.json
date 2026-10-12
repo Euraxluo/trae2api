@@ -1,0 +1,45 @@
+{
+  "listen": "0.0.0.0:7870",
+  "api_key": "",
+  "data_dir": "/app/data",
+
+  "pool": {
+    "max_in_flight": 3,
+    "breaker_threshold": 3,
+    "breaker_cooldown": "30m",
+    "idle_weight_per_hour": 0.5,
+    "idle_weight_max": 5.0,
+    "pick_gap": "100ms"
+  },
+
+  "cooldown": {
+    "soft_rate": "600s",
+    "soft_rate_max": "2h",
+    "model_cooldown": "600s"
+  },
+
+  "trae": {
+    "accounts": [
+      {
+        "product": "trae-cn",
+        "label": "Trae CN",
+        "storage_path": "/trae/trae-cn/storage.json"
+      },
+      {
+        "product": "solo-cn",
+        "label": "TRAE SOLO CN",
+        "storage_path": "/trae/solo-cn/storage.json"
+      }
+    ]
+  },
+
+  "schedule": {
+    "checkin_enabled": true,
+    "checkin_hours": [9, 21]
+  },
+
+  "session_sticky": {
+    "enabled": true,
+    "ttl": "30m"
+  }
+}

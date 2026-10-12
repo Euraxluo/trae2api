@@ -1,0 +1,42 @@
+# 构建上下文排除项。
+#
+# ⚠️ 本文件的行尾必须是 LF。Docker 逐行解析它，在 core.autocrlf=true 的机器上
+# 检出成 CRLF 后，每行末尾会多一个 \r，规则变成 "node_modules/\r" 而**静默失配**：
+# 不报错、不警告，只是不再排除，构建上下文重新变大。
+# 仓库根的 .gitattributes 已把本文件钉成 eol=lf。
+
+# 版本控制与编辑器
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+
+# 本地产物（绝不能进镜像：会污染构建，且体积巨大）
+*.exe
+trae2api
+run/
+data/
+*.log
+# 交叉编译产物（release 工作流会生成 7 个平台的二进制，合计约 58MB —— 
+# 漏排这一条会让每次 docker build 都把 58MB 传进构建上下文）
+dist/
+
+# 盘查报告与调研材料（只在仓库里用于决策，镜像不需要）
+research/
+# CI 配置（构建不需要）
+.github/
+
+# 本地配置（可能含 api_key 与账号路径，绝不能进镜像）
+config.json
+config.local.json
+.env
+.env.*
+
+# 挂载进来的凭据目录（若用户图省事放在仓库里，必须排除）
+secrets/
+trae-*/
+
+# 文档与端到端脚本（构建不需要）
+*.md
+docs/

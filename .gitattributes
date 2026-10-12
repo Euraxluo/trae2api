@@ -1,0 +1,27 @@
+# 行尾与执行位的唯一事实来源。
+#
+# 为什么必须钉：Docker 逐行解析 .dockerignore，CRLF 会让每行末尾多一个 \r，
+# 规则变成 "node_modules/\r" 而**静默失配**（不报错、不警告，只是不生效）。
+# shell 脚本的 CRLF 更直接：shebang 变成 /bin/sh^M，报 bad interpreter。
+
+* text=auto eol=lf
+
+# Docker 相关：必须 LF（.dockerignore 的静默失配就是从这里来的）
+Dockerfile text eol=lf
+Dockerfile.* text eol=lf
+.dockerignore text eol=lf
+docker-compose.yml text eol=lf
+docker-compose.*.yml text eol=lf
+
+# shell 脚本：必须 LF + 可执行位
+*.sh text eol=lf
+
+# Windows 批处理：必须 CRLF（cmd.exe 对 LF-only 的 .cmd 在部分场景会出问题）
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制
+*.exe binary
+*.png binary
+*.jpg binary
+*.ico binary

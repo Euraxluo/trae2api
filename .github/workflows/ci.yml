@@ -1,0 +1,160 @@
+name: CI
+
+# 触发：推送到主分支、针对主分支的 PR、以及手动。
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# 同一分支的并发运行只保留最新一次（旧的会被取消），省 CI 额度。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 测试与静态检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # 从 go.mod 读版本，避免 CI 与本地工具链漂移
+          go-version-file: go.mod
+          cache: true
+
+      - name: 依赖校验（本项目应为零第三方依赖）
+        run: |
+          go mod download
+          # 若 go.mod 里出现了 require，说明引入了依赖 —— 显式报错而不是默默接受，
+          # 因为「零第三方依赖」是本项目的硬约束。
+          if grep -qE '^require' go.mod; then
+            echo "::error::go.mod 出现了 require —— 本项目要求零第三方依赖"
+            cat go.mod
+            exit 1
+          fi
+          echo "✅ go.mod 无第三方依赖"
+
+      - name: go vet
+        # desktop 包实现了 WebView2 的 COM 互操作：原生代码经回调把裸指针以
+        # uintptr 交给我们，转回 unsafe.Pointer 无法避免 —— vet 的 unsafeptr
+        # 分析器对这类代码有已知误报（它假定 uintptr 源自 Go 指针，而这里源自原生侧）。
+        #
+        # 所以这里**不**简单地关掉整个分析器，而是精确放行：
+        #   - 任何**其它** vet 报告 → 失败
+        #   - unsafeptr 报告出现在 desktop 包**之外** → 也失败
+        # 这样"已知误报"之外的一切仍然受保护。
+        run: |
+          set -uo pipefail
+          out=$(go vet ./... 2>&1 || true)
+          echo "$out"
+
+          unexpected=$(printf '%s\n' "$out" | grep -E '\.go:[0-9]+' \
+            | grep -v 'possible misuse of unsafe.Pointer' || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::出现未预期的 vet 报告"
+            exit 1
+          fi
+
+          misuse=$(printf '%s\n' "$out" | grep 'possible misuse of unsafe.Pointer' || true)
+          outside=$(printf '%s\n' "$misuse" | grep -v 'internal/desktop/' || true)
+          if [ -n "$outside" ]; then
+            echo "::error::unsafeptr 报告出现在 desktop 包之外，需人工确认"
+            exit 1
+          fi
+          echo "✅ vet 通过（仅 desktop 包有 COM 互操作的已知 unsafeptr 误报）"
+
+      - name: gofmt 检查
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::以下文件未格式化："
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: 测试（含竞态检测）
+        # -race 在 CI 上是必须的：本项目的池/闸/指标都有并发共享状态，
+        # 只在本地跑普通测试会漏掉数据竞争。
+        run: go test -race -timeout 300s ./...
+
+      - name: 测试覆盖概览
+        run: go test -cover ./...
+
+  # 交叉编译矩阵：确认代码在三大平台上都能编译（不跑测试，只验证可编译）
+  build:
+    name: 交叉编译 ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: darwin,  goarch: amd64 }
+          - { goos: darwin,  goarch: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: 编译
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          # CGO_ENABLED=0 → 纯静态二进制（镜像里用 alpine，且便于交叉编译）
+          CGO_ENABLED: "0"
+        run: |
+          # -trimpath 去掉本机绝对路径（可复现构建）
+          # -s -w 去符号表（体积约减半）
+          go build -trimpath -ldflags "-s -w" -o /tmp/out/trae2api-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/trae2api
+          ls -lh /tmp/out/
+
+      - name: 上传产物（仅用于本 job 内查看，正式发布见 release.yml）
+        uses: actions/upload-artifact@v4
+        with:
+          name: trae2api-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: /tmp/out/trae2api-*
+          retention-days: 7
+          if-no-files-found: error
+
+  # Docker 构建校验：只 build 不 push，用来确认 Dockerfile 真的能构建成功。
+  # 这一步的价值在于「把未经构建验证的 Dockerfile 变成每次 CI 都验证」。
+  docker:
+    name: Docker 构建校验
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 构建镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: trae2api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 校验镜像
+        run: |
+          set -euo pipefail
+          # 1) 必须以非 root 运行（镜像里建的是 10001）
+          uid=$(docker run --rm --entrypoint id trae2api:ci -u)
+          echo "容器内 uid=$uid"
+          if [ "$uid" = "0" ]; then
+            echo "::error::容器以 root 运行 —— Dockerfile 的 USER 生效失败"
+            exit 1
+          fi
+          # 2) 数据目录必须可写（非 root 进程要能落盘状态与用户文件）
+          docker run --rm --entrypoint sh trae2api:ci -c 'touch /app/data/.w && rm /app/data/.w'
+          echo "✅ 非 root 且 /app/data 可写"

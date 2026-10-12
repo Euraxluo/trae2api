@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trae2Api 控制台 · Trae 订阅额度转 OpenAI 兼容 API</title>
+  <style>
+/*__CONSOLE_CSS__*/
+</style>
+</head>
+<body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+  
+  <!-- Top Navigation / Header -->
+  <!-- Top Navigation / Header -->
+  <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Left: Logo & Subtitle -->
+      <div class="flex items-center gap-3.5">
+        <div class="relative flex items-center justify-center">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <span class="absolute -bottom-1 -right-1 flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          </span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white">Trae<span class="text-indigo-400">2Api</span></h1>
+            <span class="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 border border-indigo-500/30 rounded-full tracking-wide">
+              PRO
+            </span>
+            <button id="versionBadgeBtn" onclick="checkAppUpdate(true)" title="点击检查更新" class="px-2 py-0.5 text-[10px] font-mono rounded-full bg-slate-800 text-slate-400 border border-slate-700 hover:border-indigo-500 transition flex items-center gap-1">
+              <span id="appVersionText">0.1.0</span>
+              <span id="updateAvailableDot" class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping hidden"></span>
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono hidden sm:block">Trae 订阅额度 → OpenAI 兼容 API</p>
+        </div>
+      </div>
+
+      <!-- Right: Compact Clean Action Bar -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Link to Public Portal -->
+        <a href="/" target="_self" title="访问前台门户展示页" class="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-xl text-slate-300 hover:text-white text-xs font-semibold shadow-sm transition flex items-center gap-1.5 group">
+          <svg class="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <span class="hidden sm:inline">前台门户</span>
+        </a>
+
+        <!-- Quick OAuth Dropdown / Group -->
+        <div class="relative">
+          <button id="btnHeaderAuthMenu" onclick="toggleHeaderAuthMenu()" class="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>添加账号</span>
+            <svg class="w-3 h-3 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <!-- Dropdown popup -->
+          <div id="headerAuthDropdown" class="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 hidden z-50">
+            <div class="px-3 pt-2 pb-1 text-[10px] font-mono text-slate-500 uppercase tracking-wider">国内版</div>
+            <button onclick="openOAuthModal('trae-cn'); toggleHeaderAuthMenu();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white flex items-center gap-2.5 transition">
+              <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>授权 Trae CN</span>
+            </button>
+            <button onclick="openOAuthModal('solo-cn'); toggleHeaderAuthMenu();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white flex items-center gap-2.5 transition">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>授权 TRAE SOLO CN</span>
+            </button>
+            <div class="h-px bg-slate-800 my-1"></div>
+            <!-- 国际版：账号体系与国内版**完全独立**，凭据也不通用。
+                 默认开启（见 config.intl），但只有装了国际版客户端才有账号可认；
+                 这里提供的是"用浏览器授权一个新国际版账号"的入口。 -->
+            <div class="px-3 pt-1 pb-1 text-[10px] font-mono text-slate-500 uppercase tracking-wider">国际版</div>
+            <button onclick="openOAuthModal('trae-intl'); toggleHeaderAuthMenu();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white flex items-center gap-2.5 transition">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span>授权 Trae International</span>
+            </button>
+            <button onclick="openOAuthModal('solo-intl'); toggleHeaderAuthMenu();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white flex items-center gap-2.5 transition">
+              <span class="w-2 h-2 rounded-full bg-teal-400"></span>
+              <span>授权 TRAE SOLO International</span>
+            </button>
+            <div class="h-px bg-slate-800 my-1"></div>
+            <button onclick="openImportModal(); toggleHeaderAuthMenu();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white flex items-center gap-2.5 transition">
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+              <span>导入 JSON 凭证</span>
+            </button>
+          </div>
+        </div>
+
+        <button onclick="refreshData()" title="刷新数据" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl transition duration-200">
+          <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </button>
+
+        <div class="h-5 w-px bg-slate-800"></div>
+
+        <!-- Current User Profile Pill -->
+        <div id="navUserBadge" class="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 hidden">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="navUsernameText" class="font-medium text-white max-w-[100px] truncate">admin</span>
+          <span id="navUserRoleTag" class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">管理员</span>
+          <button id="navLogoutBtn" onclick="doLogout()" title="退出登录" class="ml-1 text-slate-500 hover:text-rose-400 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    
+    <!-- Unprotected Security Warning Banner -->
+    <div id="unprotectedWarningBanner" class="hidden p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex items-start sm:items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div>
+          <div class="text-sm font-semibold text-amber-300">安全风险警示：当前控制台尚未配置管理访问密码</div>
+          <div class="text-xs text-amber-200/80 mt-0.5">任何可访问此服务端口的人员均可查看账号凭证与操作控制台。强烈建议立即配置管理密码，以激活全局鉴权与安全防护！</div>
+        </div>
+      </div>
+      <button onclick="openChangePasswordModal()" class="px-3.5 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl transition shrink-0 shadow-sm self-start sm:self-auto">
+        立即配置密码
+      </button>
+    </div>
+
+    <!-- Modern Top Nav Tabs (New API / SaaS Dashboard Style) -->
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div class="flex items-center gap-1.5 p-1 bg-slate-900/90 rounded-2xl border border-slate-800 overflow-x-auto custom-scroll max-w-full">
+        <button id="mainTabBtn-accounts" onclick="switchMainTab('accounts')" class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 bg-indigo-600 text-white shadow-md shadow-indigo-600/25 transition whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <span>账号池矩阵</span>
+        </button>
+        <button id="mainTabBtn-access" onclick="switchMainTab('access')" class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          <span>客户端接入 & Key</span>
+        </button>
+        <button id="mainTabBtn-analytics" onclick="switchMainTab('analytics')" class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span>用量分析看板</span>
+        </button>
+        <button id="mainTabBtn-playground" onclick="switchMainTab('playground')" class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <span>在线调试 & 流水</span>
+        </button>
+        <button id="mainTabBtn-dsh" onclick="switchMainTab('dsh')" class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span class="flex items-center gap-1.5">
+            <span>Agent (dsh)</span>
+            <span id="dshNavStatusDot" class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+          </span>
+        </button>
+        <button id="mainTabBtn-users" onclick="switchMainTab('users')" class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition hidden whitespace-nowrap">
+          <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <span>用户权限管理</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 1: 账号池矩阵 & 负载监控 -->
+    <div id="tabContent-accounts" class="space-y-6">
+      <!-- Metrics Dashboard -->
+      <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">总账号资产</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="statTotal" class="text-2xl font-bold font-mono text-white">0</span>
+            <span class="text-[10px] text-slate-500">ACCOUNTS</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-indigo-400">
+            <span>双域智能负载</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">健康可调度</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="statHealthy" class="text-2xl font-bold font-mono text-emerald-400">0</span>
+            <span class="text-[10px] text-emerald-500/70">READY</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-emerald-400/80">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1.5"></span>
+            <span>正常就绪</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">限流冷却中</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="statCooling" class="text-2xl font-bold font-mono text-amber-400">0</span>
+            <span class="text-[10px] text-amber-500/70">COOLING</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-amber-400/80">
+            <span>自动退避中</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">异常/停用</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="statDisabled" class="text-2xl font-bold font-mono text-rose-400">0</span>
+            <span class="text-[10px] text-rose-500/70">OFFLINE</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-rose-400/80">
+            <span>手动或熔断</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">会话粘性绑定</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="statSticky" class="text-2xl font-bold font-mono text-cyan-400">0</span>
+            <span class="text-[10px] text-cyan-500/70">SESSIONS</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-cyan-400/80">
+            <span>上下文稳定路由</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">在途并发满载</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="statInFlight" class="text-2xl font-bold font-mono text-purple-400">0</span>
+            <span class="text-[10px] text-purple-500/70">BUSY</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-purple-400/80">
+            <span>最大并发保护</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Account Pool Card -->
+      <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-glass">
+        <div class="px-6 py-5 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-900/30">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2.5">
+              <span class="flex h-2 w-2 rounded-full bg-indigo-500"></span>
+              <span>账号池矩阵（国内版 CN · 国际版 Global）</span>
+              <span id="accountCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">0</span>
+            </h2>
+            <p id="poolSubtitle" class="text-xs text-slate-400 mt-0.5">支持国内与国际双域全自动轮询、故障自愈、积分跟踪与生命周期监控</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Account Pool Specific Actions -->
+            <div class="inline-flex rounded-xl p-0.5 bg-slate-900/80 border border-slate-800">
+              <button onclick="openOAuthModal('trae-cn')" class="px-2.5 py-1 text-blue-400 hover:text-blue-300 hover:bg-slate-800/80 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="授权国内版 Trae CN">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                <span>Trae CN</span>
+              </button>
+              <button onclick="openOAuthModal('solo-cn')" class="px-2.5 py-1 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/80 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="授权国内版 SOLO CN">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>SOLO CN</span>
+              </button>
+              <button onclick="openOAuthModal('trae-intl')" class="px-2.5 py-1 text-sky-400 hover:text-sky-300 hover:bg-slate-800/80 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="授权海外国际版 Trae International">
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                <span>Trae Intl</span>
+              </button>
+              <button onclick="openOAuthModal('solo-intl')" class="px-2.5 py-1 text-teal-400 hover:text-teal-300 hover:bg-slate-800/80 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="授权海外国际版 SOLO International">
+                <span class="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                <span>SOLO Intl</span>
+              </button>
+            </div>
+            <button onclick="openImportModal()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl text-xs font-medium transition flex items-center gap-1.5" title="支持上传 ZIP 备份包、选择多个 JSON 凭证文件、粘贴 JSON/卡密文本，或导入 Trae 客户端 storage.json">
+              <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              <span>批量导入</span>
+            </button>
+            <button onclick="exportAccountsBackup()" class="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-medium transition flex items-center gap-1.5" title="一键打包全部账号凭证为 ZIP（含 refreshToken 与设备私钥，请妥善保管）">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>全量导出</span>
+            </button>
+            <button onclick="runBatchSignin()" class="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>日常签到</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 批量动作条：绑定契约 A（/admin/accounts/revive|control|delete）与既有闸门端点 -->
+        <div class="px-6 py-2.5 border-b border-slate-800/80 bg-slate-950/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-400 font-medium">批量操作:</span>
+            <span id="acctSelectedCount" class="font-mono text-indigo-300 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">已选 0</span>
+            <button onclick="batchRevive()" title="清冷却 + 清熔断 + 清连败计数 + 清降权 + 清模型级冷却（五样一起清）" class="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg font-medium transition">批量复活</button>
+            <button onclick="batchControl('enable')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg font-medium transition">批量启用</button>
+            <button onclick="batchControl('disable')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg font-medium transition">批量停用</button>
+            <button onclick="batchDelete()" class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg font-medium transition">批量删除</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="reviveAll()" title="对全部账号执行复活（五样一起清）" class="px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-lg font-medium transition">全部复活</button>
+            <button onclick="refreshCredits()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg font-medium transition">刷新额度</button>
+            <button onclick="resetWAF()" title="解除 IP 级闸：确认上游限流已过（或换了出口 IP）时手动恢复轮转" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg font-medium transition">解除 IP 闸</button>
+            <button onclick="resetDegrade()" title="解除提示词降级，不必等次日零点" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg font-medium transition">解除降级</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/60 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3.5 font-semibold w-10">
+                  <input type="checkbox" id="acctSelectAll" onchange="toggleSelectAllAccounts(this.checked)" title="全选 / 取消全选" class="accent-indigo-500 cursor-pointer" />
+                </th>
+                <th class="px-6 py-3.5 font-semibold">域/环境</th>
+                <th class="px-6 py-3.5 font-semibold">UID / 账号昵称</th>
+                <th class="px-6 py-3.5 font-semibold">运行状态</th>
+                <th class="px-6 py-3.5 font-semibold">积分余量</th>
+                <th class="px-6 py-3.5 font-semibold text-right">调度操作</th>
+              </tr>
+            </thead>
+            <tbody id="accountsTable" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="6" class="px-6 py-12 text-center text-slate-500 font-sans">
+                  <div class="flex flex-col items-center justify-center space-y-3">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-800/50 flex items-center justify-center text-slate-600">
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </div>
+                    <p class="text-sm text-slate-400 font-medium">账号池当前为空</p>
+                    <p class="text-xs text-slate-500 max-w-sm">请点击上方按钮快速授权国内版或国际版账号，或导入已有凭证</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: 客户端接入 & Key & 聚合模型 -->
+    <div id="tabContent-access" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Downstream Connection Config (7 cols) -->
+        <div class="lg:col-span-7 glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass space-y-5">
+          <div class="border-b border-slate-800/80 pb-4">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>下游客户端接入配置</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">标准 OpenAI 兼容协议，主流客户端即插即用</p>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                <span class="font-medium">API Base URL</span>
+                <button onclick="copyText('displayBaseUrl')" class="text-indigo-400 hover:text-indigo-300 text-[11px] font-medium">复制端点</button>
+              </div>
+              <div id="displayBaseUrl" class="bg-slate-900 border border-slate-800/80 p-3.5 rounded-xl font-mono text-xs text-indigo-300 break-all select-all flex items-center justify-between">
+                <span id="displayBaseUrlText">/v1</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                <span class="font-medium">您的专属 API Key</span>
+                <div class="space-x-2">
+                  <button onclick="copyApiKey()" class="text-indigo-400 hover:text-indigo-300 text-[11px]">复制</button>
+                  <button onclick="resetMyAPIKey()" class="text-amber-400 hover:text-amber-300 text-[11px] font-medium" title="生成全新的 API Key 并让旧 Key 立即失效">重置Key</button>
+                  <button id="btnSaveApiKey" onclick="saveApiKey()" class="text-emerald-400 hover:text-emerald-300 text-[11px] font-medium">保存修改</button>
+                </div>
+              </div>
+              <div class="relative flex items-center">
+                <input id="inputApiKey" type="text" placeholder="填入你的 API Key（单机免密时可留空）" class="w-full bg-slate-900 border border-slate-800/80 rounded-xl px-3.5 py-2.5 font-mono text-xs text-emerald-400 focus:outline-none focus:border-indigo-500 transition pr-20" />
+                <span id="saveKeyFeedback" class="absolute right-3 text-[11px] text-emerald-400 hidden">已保存</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1.5">每个用户账号拥有独立隔离的 API Key，调用时按其名下账号池路由。</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800/60">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                <span class="font-medium flex items-center gap-1.5">
+                  <span>控制台管理密码</span>
+                  <span id="webPasswordStatusBadge" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">检测中</span>
+                </span>
+                <button onclick="openChangePasswordModal()" class="text-indigo-400 hover:text-indigo-300 text-[11px] font-medium">设置/修改密码</button>
+              </div>
+              <p class="text-[11px] text-slate-500">开启密码后，访问控制台、导入凭证、查看Token流水均需登录，防止被他人盗用。</p>
+            </div>
+
+            <div class="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+              <div class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>无缝适配各大 AI 客户端</span>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                可直连 <b class="text-slate-200">NextChat</b>、<b class="text-slate-200">LobeChat</b>、<b class="text-slate-200">Cherry Studio</b>、<b class="text-slate-200">Chatbox</b>、<b class="text-slate-200">Cursor</b>、<b class="text-slate-200">Cline</b>、<b class="text-slate-200">Roo Code</b> 等各种支持自定义 OpenAI 接口地址的软件。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Models Catalog (5 cols) -->
+        <div class="lg:col-span-5 glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass space-y-4">
+          <div class="border-b border-slate-800/80 pb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                <span>聚合模型清单</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">由渠道目录派生的可路由模型（含虚拟智能体模型 dsh）</p>
+            </div>
+            <span id="modelCountBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">0</span>
+          </div>
+
+          <div id="modelsList" class="space-y-2 max-h-[460px] overflow-y-auto pr-1 custom-scroll text-xs">
+            <div class="text-slate-500 text-center py-8">正在加载模型列表...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: 用量分析看板 -->
+    <div id="tabContent-analytics" class="space-y-6 hidden">
+      <!-- Token Analytics (Persistent Memory) -->
+      <section class="glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>Token 调用统计看板</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">每日按天统计 · 永久记忆</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">每日 Token 消耗自动按天隔离并本地落盘；分模型明细为全量累计（本网关按天只聚合总量）</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- 日期选择器 -->
+            <div class="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+              <span class="text-xs text-slate-400 font-medium">查看日期:</span>
+              <select id="metricsDateSelector" onchange="onMetricsDateChange(this.value)" class="bg-slate-800 text-xs font-mono text-emerald-400 rounded-lg px-2 py-0.5 border border-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="today">今日消耗 (Today)</option>
+                <option value="all">历史全量累计</option>
+              </select>
+            </div>
+            <span id="tokenUptimeText" class="text-[11px] font-mono text-slate-400 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+              统计中...
+            </span>
+          </div>
+        </div>
+
+        <!-- Current Scope 4 metrics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+            <div class="flex items-center justify-between">
+              <span id="labelTotalTokens" class="text-[11px] font-medium text-slate-400">今日消耗 Token</span>
+              <span id="badgeDateScope" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400">今日</span>
+            </div>
+            <div id="statTotalTokens" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0</div>
+            <div class="text-[10px] text-slate-500 mt-1">Prompt + Completion</div>
+          </div>
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+            <div class="text-[11px] font-medium text-slate-400">生成 Tokens (输出)</div>
+            <div id="statCompTokens" class="text-2xl font-bold font-mono text-cyan-400 mt-1">0</div>
+            <div class="text-[10px] text-slate-500 mt-1">大模型实际回答输出</div>
+          </div>
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+            <div class="text-[11px] font-medium text-slate-400">提示 Tokens (输入)</div>
+            <div id="statPromptTokens" class="text-2xl font-bold font-mono text-indigo-400 mt-1">0</div>
+            <div class="text-[10px] text-slate-500 mt-1">客户端发送上下文提示</div>
+          </div>
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+            <div class="text-[11px] font-medium text-slate-400">请求调用数</div>
+            <div id="statTotalReqs" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</div>
+            <div id="statSuccessRate" class="text-[10px] text-slate-500 mt-1">成功率: 100%</div>
+          </div>
+        </div>
+
+        <!-- Models Breakdown Table -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h3 id="currentScopeTitle" class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+              <span>模型消耗明细</span>
+            </h3>
+            <span class="text-[11px] text-slate-500">按请求调用量降序</span>
+          </div>
+          <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-left text-xs font-mono">
+              <thead>
+                <tr class="text-slate-400 border-b border-slate-800/80 pb-2">
+                  <th class="py-2.5 px-3 font-medium">模型名称</th>
+                  <th class="py-2.5 px-3 font-medium">倍率</th>
+                  <th class="py-2.5 px-3 font-medium">请求量</th>
+                  <th class="py-2.5 px-3 font-medium">总 Tokens</th>
+                  <th class="py-2.5 px-3 font-medium">输入 (Prompt)</th>
+                  <th class="py-2.5 px-3 font-medium">输出 (Completion)</th>
+                  <th class="py-2.5 px-3 font-medium">平均速率</th>
+                  <th class="py-2.5 px-3 font-medium">缓存命中率</th>
+                  <th class="py-2.5 px-3 font-medium text-right">平均延迟</th>
+                </tr>
+              </thead>
+              <tbody id="tokenModelsTable" class="divide-y divide-slate-800/40 text-slate-300">
+                <tr>
+                  <td colspan="9" class="py-6 text-center text-slate-500 font-sans">暂无模型调用数据，调用后自动在此按天记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Daily History Breakdown Table -->
+        <div class="pt-4 border-t border-slate-800/60 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              <span>每日统计历史 (Daily Breakdown)</span>
+            </h3>
+            <span class="text-[11px] text-slate-500">记录每一天的请求总量与 Token 消耗流水</span>
+          </div>
+          <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-left text-xs font-mono">
+              <thead>
+                <tr class="text-slate-400 border-b border-slate-800/80 pb-2">
+                  <th class="py-2.5 px-3 font-medium">日期</th>
+                  <th class="py-2.5 px-3 font-medium">总请求数</th>
+                  <th class="py-2.5 px-3 font-medium">成功率</th>
+                  <th class="py-2.5 px-3 font-medium">总消耗 Tokens</th>
+                  <th class="py-2.5 px-3 font-medium">提示 Tokens (输入)</th>
+                  <th class="py-2.5 px-3 font-medium">生成 Tokens (输出)</th>
+                  <th class="py-2.5 px-3 font-medium">缓存命中率</th>
+                  <th class="py-2.5 px-3 font-medium text-right">快捷操作</th>
+                </tr>
+              </thead>
+              <tbody id="dailyHistoryTable" class="divide-y divide-slate-800/40 text-slate-300">
+                <tr>
+                  <td colspan="8" class="py-6 text-center text-slate-500 font-sans">暂无历史天数统计数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 4: 在线调试 & 实时流水 -->
+    <div id="tabContent-playground" class="space-y-6 hidden">
+      <!-- Chat Playground -->
+      <div class="glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span>智能网关全链路调试</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">免客户端即可实时验证模型路由、负载均衡与响应流</p>
+          </div>
+          <div id="chatTiming" class="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20 hidden">
+            耗时: 0.00s
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">请求路由与模型选择</label>
+            <div class="relative">
+              <select id="chatModel" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 appearance-none font-mono">
+                <option value="">正在检测并加载可服务模型...</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">接入 API Key</label>
+            <input id="chatApiKey" type="text" placeholder="API Key（已自动填入浏览器保存的值）" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono" value="" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold text-slate-300">Prompt 测试指令</label>
+            <div class="flex items-center gap-2">
+              <label for="chatFileInput" class="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer bg-slate-900 hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/80 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <span>添加附件 (图片 / 文档 / 文件)</span>
+              </label>
+              <input type="file" id="chatFileInput" accept="image/*,.txt,.md,.pdf,.json,.csv,.py,.go,.js,.ts,.html,.css,.java,.c,.cpp,.rs,.sql,.xml,.yaml,.yml" class="hidden" onchange="handleChatFileSelect(event)" />
+            </div>
+          </div>
+          <textarea id="chatPrompt" rows="2" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="例如：分析附件内容或代码逻辑（支持点击右上角上传图片/文档，或直接在输入框粘贴截图）"></textarea>
+
+          <!-- File / Image Preview Area -->
+          <div id="chatFilePreviewArea" class="mt-2.5 flex items-center gap-3 hidden">
+            <div class="relative group">
+              <div id="chatImagePreviewWrapper" class="hidden">
+                <img id="chatImagePreview" src="" class="h-16 w-16 object-cover rounded-xl border border-indigo-500/50 shadow-md" />
+              </div>
+              <div id="chatDocPreviewWrapper" class="h-16 w-16 rounded-xl border border-indigo-500/50 bg-slate-900/90 shadow-md flex flex-col items-center justify-center text-indigo-400 hidden">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span id="chatDocExt" class="text-[9px] font-mono mt-0.5 uppercase">DOC</span>
+              </div>
+              <button onclick="removeChatFile()" class="absolute -top-1.5 -right-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-0.5 shadow transition" title="移除附件">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="text-[11px] text-slate-400 space-y-0.5">
+              <div class="font-mono text-slate-300 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                <span id="chatFileName">file.png</span>
+              </div>
+              <div id="chatFileTypeDesc" class="text-slate-500">已就绪多模态 (OpenAI image_url 格式)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <div class="text-[11px] text-slate-500">
+            OpenAI 标准格式 · POST /v1/chat/completions
+          </div>
+          <button onclick="sendChatMessage()" id="btnSendChat" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/25 transition duration-200 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span>发送测试</span>
+          </button>
+        </div>
+
+        <div id="chatResponseBox" class="mt-4 p-4 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-200 hidden whitespace-pre-wrap font-mono leading-relaxed max-h-60 overflow-y-auto custom-scroll"></div>
+      </div>
+
+      <!-- Live Request Logs Card -->
+      <div class="glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>实时网关请求流水</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">按账号聚合的调度与用量记录（本网关无逐请求流水端点，此表由 /v1/stats 的 by_account 派生）</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="logCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">0 条</span>
+            <button onclick="refreshData()" class="text-xs text-slate-400 hover:text-indigo-400 transition" title="刷新流水">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scroll">
+          <table class="w-full text-left text-xs font-mono">
+            <thead>
+              <tr class="text-slate-400 border-b border-slate-800/80 pb-2">
+                <th class="py-2 px-2 font-medium">序号</th>
+                <th class="py-2 px-2 font-medium">最近调用</th>
+                <th class="py-2 px-2 font-medium">账号（路由）</th>
+                <th class="py-2 px-2 font-medium">请求数</th>
+                <th class="py-2 px-2 font-medium">成功 / 失败</th>
+                <th class="py-2 px-2 font-medium">平均TTFB</th>
+                <th class="py-2 px-2 font-medium">平均耗时</th>
+                <th class="py-2 px-2 font-medium">生成Token</th>
+                <th class="py-2 px-2 font-medium text-right">速率</th>
+              </tr>
+            </thead>
+            <tbody id="requestLogsTable" class="divide-y divide-slate-800/40 text-slate-300">
+              <tr>
+                <td colspan="9" class="py-8 text-center text-slate-500 font-sans">暂无请求调用流水（调用网关接口后将在此实时呈现）</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: DeepSeek Harness (dsh) AI Agent 运行器 -->
+    <div id="tabContent-dsh" class="space-y-6 hidden">
+      <!-- Agent Status & Controls Header -->
+      <div class="glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass relative overflow-hidden">
+        <div class="absolute -right-8 -top-8 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2.5">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span>DeepSeek Harness (dsh) Agent 智能体</span>
+              </h2>
+              <span id="dshStatusBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">检测中...</span>
+            </div>
+            <p class="text-xs text-slate-400 max-w-2xl">
+              深度整合 DeepSeek 官方出品的自主编程与智能体框架 <span class="font-mono text-cyan-300">@deepseek-ai/dsh</span>。无需手动配置模型与反代，可在页面内一键操控或嵌入式直连使用，随用随启、不占多余内存。
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnDshStart" onclick="startDsh()" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-cyan-600/20 transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>一键启动 dsh</span>
+            </button>
+            <button id="btnDshStop" onclick="stopDsh()" class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 hidden">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+              <span>停止服务</span>
+            </button>
+            <button id="btnDshOpenWindow" onclick="openDshExternal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5 hidden">
+              <span>独立新窗口打开</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </button>
+            <button onclick="resetDshEnv()" title="清除本地便携环境缓存并重置探测" class="px-3 py-2 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              <span>重置/清除环境</span>
+            </button>
+            <button onclick="fetchDshStatus(true)" title="刷新状态" class="p-2 text-slate-400 hover:text-white bg-slate-800 border border-slate-700 rounded-xl transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Environment & Config Summary Bar -->
+        <div class="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+          <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex items-center justify-between">
+            <span class="text-slate-400">Node / npx 环境:</span>
+            <span id="dshEnvInfo" class="font-bold text-slate-200">检测中</span>
+          </div>
+          <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex items-center justify-between">
+            <span class="text-slate-400">上游网关 BaseURL:</span>
+            <span id="dshGatewayURL" class="text-indigo-400 truncate max-w-[160px]">—</span>
+          </div>
+          <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex items-center justify-between">
+            <span class="text-slate-400">监听服务端口:</span>
+            <span id="dshPortText" class="text-emerald-400 font-bold">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Iframe View Area (When Running) -->
+      <div id="dshIframeContainer" class="glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-2xl hidden" style="height: 720px;">
+        <div class="p-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+            <span class="text-slate-400 ml-2">DeepSeek Harness UI (<span id="dshIframeUrlText">—</span>)</span>
+          </div>
+          <button onclick="reloadDshIframe()" class="text-slate-400 hover:text-white flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>刷新页面</span>
+          </button>
+        </div>
+        <iframe id="dshIframe" src="" class="w-full h-[calc(100%-41px)] border-0 bg-white dark:bg-slate-950"></iframe>
+      </div>
+
+      <!-- Not Running / Guide Area -->
+      <div id="dshGuideContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Card 1: Fast Start Guide -->
+        <div class="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            <span>关于 DeepSeek Harness (dsh) 嵌入集成</span>
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            DeepSeek Harness 是 DeepSeek 官方研发的终端与网页多功能 Agent 评测与自动化智能体框架。
+          </p>
+          <div class="space-y-2 text-xs text-slate-400">
+            <div class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>只做检测、不下载：</b> 点击「检测安装环境」只探测本机 Node 与 dsh 桌面端是否存在，并给出安装指引。</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>已安装即直接显示可调用：</b> 模型清单里始终有 <code class="text-cyan-300 bg-slate-900 px-1 py-0.5 rounded">dsh</code> 条目；但它<b>不能</b>当上游模型调用（<code class="text-cyan-300 bg-slate-900 px-1 py-0.5 rounded">/v1/chat/completions</code> 会明确拒绝，不会静默转发）。</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>自动配置与无缝中继：</b> Trae2Api 自动注入统一 BaseURL 与 API Key，无需繁琐设置。</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>随时停止：</b> 点「停止服务」立即回收进程与端口；<b>重置环境</b>只清日志与运行状态，不删你的数据。</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Manual / Standalone Launch Guide -->
+        <div class="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span>外置 / 跨机器 / Docker 快捷接入</span>
+            </h3>
+            <button onclick="exportDshEnv()" class="text-xs text-cyan-400 hover:text-cyan-300 hover:underline font-mono">生成 .env 配置文件</button>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            如需在其他终端或独立服务器中使用 dsh，复制下方环境变量即可直连本网关：
+          </p>
+
+          <div class="relative group">
+            <pre id="dshEnvCode" class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto custom-scroll">
+# 快捷终端执行（跨平台单行命令）—— 刷新状态后此处会填入真实 BaseURL 与 Key
+# 点下方「生成 .env 配置文件」可直接导出，或点「复制命令」复制本段</pre>
+            <button onclick="copyDshCmd()" class="absolute top-2 right-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg transition font-mono">
+              复制命令
+            </button>
+          </div>
+
+          <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-xs space-y-1.5">
+            <div class="font-semibold text-white">Docker Compose 零配置启动（见仓库根目录）</div>
+            <p class="text-slate-400 text-[11px] font-mono leading-relaxed">
+              docker compose up -d --build
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Logs Card -->
+      <div class="glass-panel rounded-2xl border border-slate-800 p-6 shadow-glass space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            <span>dsh 运行过程与日志输出</span>
+          </h3>
+          <span id="dshLogCount" class="text-xs text-slate-400 font-mono">0 条</span>
+        </div>
+        <div id="dshLogBox" class="p-3.5 bg-slate-950/90 rounded-xl border border-slate-800/80 font-mono text-[11px] text-slate-300 max-h-48 overflow-y-auto custom-scroll leading-relaxed space-y-1">
+          <div class="text-slate-500 font-sans">暂无 dsh 运行日志</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: 用户权限与角色中心 (User & Role Management) -->
+    <div id="tabContent-users" class="space-y-6 hidden">
+      <!-- User Overview Metrics -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">总注册用户</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="userStatTotal" class="text-2xl font-bold font-mono text-white">0</span>
+            <span class="text-[10px] text-slate-500">USERS</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-purple-400">
+            <span>多租户安全隔离</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">系统管理员</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="userStatAdmins" class="text-2xl font-bold font-mono text-indigo-400">0</span>
+            <span class="text-[10px] text-slate-500">ADMINS</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-indigo-400">
+            <span>拥有全量管控权</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition"></div>
+          <p class="text-xs font-medium text-slate-400">普通隔离用户</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="userStatRegular" class="text-2xl font-bold font-mono text-emerald-400">0</span>
+            <span class="text-[10px] text-slate-500">MEMBERS</span>
+          </div>
+          <div class="mt-2 flex items-center text-[11px] text-emerald-400">
+            <span>独立专属 API Key</span>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-slate-800 relative overflow-hidden group flex flex-col justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400">开放自主注册</p>
+            <div class="flex items-center gap-2 mt-1">
+              <span id="allowRegisterStatusText" class="text-base font-bold text-emerald-400">已开放</span>
+            </div>
+          </div>
+          <div class="mt-2">
+            <button id="btnToggleAllowRegister" onclick="toggleAllowRegister()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-lg text-xs transition">
+              切换开放状态
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Users Management Table Panel -->
+      <section class="glass-panel rounded-3xl border border-slate-800 p-6 shadow-glass space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-white">用户列表与权限调度中心</h3>
+              <p class="text-xs text-slate-400">管理控制台登录用户、API Key 授权、账号归属及状态调度</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="relative">
+              <input id="userSearchInput" type="text" oninput="filterAdminUsers()" placeholder="搜索用户名 / UID / Key..." class="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500 w-48 sm:w-56" />
+            </div>
+            <button onclick="toggleCreateUserForm()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              <span>添加用户</span>
+            </button>
+            <button onclick="loadAdminUsers()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>刷新</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Add User Form (Collapsible) -->
+        <div id="adminCreateUserForm" class="p-4 bg-slate-900/90 rounded-2xl border border-indigo-500/30 space-y-3 hidden">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="text-xs font-semibold text-white flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>创建新用户账号</span>
+            </div>
+            <button onclick="toggleCreateUserForm()" class="text-slate-400 hover:text-white text-xs">✕ 取消</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] text-slate-300 font-medium mb-1">用户名</label>
+              <input id="newAdminUname" type="text" placeholder="3-32 位字符 (如: dev_user)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-300 font-medium mb-1">登录初始密码</label>
+              <input id="newAdminPass" type="password" placeholder="至少 6 位密码" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-300 font-medium mb-1">角色权限</label>
+              <select id="newAdminRole" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="user" selected>普通用户 (普通隔离池 + 专属 Key)</option>
+                <option value="admin">系统管理员 (全权限)</option>
+              </select>
+            </div>
+          </div>
+          <div id="createUserErrorMsg" class="text-xs text-rose-400 font-mono hidden"></div>
+          <div class="flex justify-end gap-2 pt-1">
+            <button onclick="toggleCreateUserForm()" class="px-3 py-1 text-xs text-slate-400 hover:text-white transition">取消</button>
+            <button id="btnSubmitCreateUser" onclick="submitAdminCreateUser()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition">
+              确认创建
+            </button>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="overflow-x-auto custom-scroll border border-slate-800/80 rounded-2xl">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/80 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3 font-semibold">用户标识</th>
+                <th class="px-4 py-3 font-semibold">用户名</th>
+                <th class="px-4 py-3 font-semibold">角色</th>
+                <th class="px-4 py-3 font-semibold">专属 API Key</th>
+                <th class="px-4 py-3 font-semibold">名下账号</th>
+                <th class="px-4 py-3 font-semibold">状态</th>
+                <th class="px-4 py-3 font-semibold">注册时间</th>
+                <th class="px-4 py-3 font-semibold text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersTableBody" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="8" class="py-8 text-center text-slate-500 font-sans">正在加载用户列表...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- OAuth Modal -->
+  <div id="oauthModal" onclick="if(event.target===this) closeOAuthModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+    <div class="glass-panel border border-slate-700/80 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden">
+
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 id="oauthModalTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <span>授权添加账号</span>
+        </h3>
+        <button onclick="closeOAuthModal()" class="relative z-10 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer" title="关闭授权弹窗 (Esc)">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="py-5">
+        <!-- Step 1: Loading URL -->
+        <div id="oauthStep1" class="text-center py-6 space-y-3">
+          <div id="oauthSpinner" class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"></div>
+          <p id="oauthStep1Text" class="text-xs text-slate-300 font-medium">正在向 Trae 授权服务器申请设备码...</p>
+
+          <!-- 启动前预检失败时的常驻错误区 -->
+          <div id="oauthErrorBox" class="hidden text-left glass-panel border border-rose-500/40 bg-rose-950/30 rounded-xl p-3.5 space-y-2.5">
+            <p class="text-xs font-bold text-rose-300">无法打开授权页</p>
+            <p id="oauthErrorMsg" class="text-[11px] leading-relaxed text-rose-200 whitespace-pre-wrap break-words font-mono"></p>
+            <div class="flex gap-2 pt-0.5">
+              <button onclick="copyText($('oauthErrorMsg').innerText)" class="px-3 py-1.5 text-[11px] bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg transition">复制错误信息</button>
+              <button onclick="closeOAuthModal()" class="px-3 py-1.5 text-[11px] text-slate-400 hover:text-white transition">关闭</button>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button onclick="closeOAuthModal()" class="px-4 py-1.5 text-xs text-slate-400 hover:text-white transition">取消</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Open browser & auto polling -->
+        <div id="oauthStep2" class="hidden space-y-4">
+          <div class="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-200 space-y-2 text-center">
+            <div class="font-semibold flex items-center justify-center gap-1.5 text-indigo-400">
+              <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+              <span>第一步：在浏览器完成确认</span>
+            </div>
+            <p class="text-slate-300 text-[11px] leading-relaxed">
+              请点击下方按钮或复制链接到浏览器完成授权。
+            </p>
+            <div class="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300/90 text-[11px] leading-relaxed text-left">
+              💡 <b>想要授权不同账号？</b> 请复制链接在<b>浏览器的无痕/隐私窗口</b>（或先在官网退出上个账号）打开，否则浏览器会默认使用当前已登录的旧账号直接完成授权！
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-2.5">
+            <a id="oauthLinkBtn" href="#" target="_blank" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30 transition duration-200 flex items-center justify-center gap-2">
+              <span>🚀 打开授权网页</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </a>
+            <button onclick="copyOAuthUrl()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition" title="复制链接去无痕窗口">
+              复制链接
+            </button>
+          </div>
+
+          <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="flex items-center gap-1.5">
+                <span id="pollIndicator" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span id="pollStatusText" class="text-emerald-400 font-mono text-[11px]">后台自动轮询检测中...</span>
+              </span>
+              <div class="flex items-center gap-2">
+                <button id="btnPollResume" onclick="resumePolling()" class="hidden px-2 py-0.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-white rounded-lg text-[10px] font-mono transition border border-indigo-500/30">继续检测</button>
+                <span id="pollCountdown" class="text-[11px] font-mono text-slate-500">180s</span>
+              </div>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-1 overflow-hidden">
+              <div id="pollProgressBar" class="bg-indigo-500 h-1 rounded-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-3">
+            <button onclick="closeOAuthModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer">
+              ✕ 取消授权并关闭
+            </button>
+            <button onclick="triggerImmediatePoll()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow transition cursor-pointer flex items-center gap-1">
+              <span>我已在网页确认，立即同步</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Success info -->
+        <div id="oauthStep3" class="hidden text-center py-6 space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <p class="text-sm text-white font-bold" id="oauthSuccessTitle">🎉 授权入池成功！</p>
+          <p class="text-xs text-slate-400 font-mono" id="oauthSuccessDetail"></p>
+          <div class="pt-2">
+            <button onclick="closeOAuthModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow transition">
+              完成并关闭
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch & Manual Import Modal -->
+  <div id="importModal" onclick="if(event.target===this) closeImportModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+    <div class="glass-panel border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
+
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span>一键批量导入凭证</span>
+        </h3>
+        <button onclick="closeImportModal()" class="relative z-10 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer" title="关闭导入弹窗 (Esc)">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3.5">
+        <!-- Target Realm Selector -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs gap-2">
+          <div class="flex items-center gap-2 text-slate-300 font-medium">
+            <span>🌐 凭证目标环境:</span>
+          </div>
+          <select id="importTargetRealm" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-indigo-300 font-mono focus:outline-none focus:border-indigo-500 cursor-pointer">
+            <option value="" selected>自动检测（凭证缺省时按 Trae CN）</option>
+            <option value="trae-cn">Trae CN（国内版）</option>
+            <option value="solo-cn">TRAE SOLO CN</option>
+          </select>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="flex p-1 bg-slate-900 border border-slate-800 rounded-xl text-xs font-medium">
+          <button id="tabImportUpload" onclick="switchImportTab('upload')" class="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold transition flex items-center justify-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+            <span>上传 ZIP 包 / 多个 JSON</span>
+          </button>
+          <button id="tabImportPaste" onclick="switchImportTab('paste')" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>粘贴凭证 (JSON / 原始 Token)</span>
+          </button>
+        </div>
+
+        <!-- Panel 1: File / ZIP Upload -->
+        <div id="importPanelUpload" class="space-y-3">
+          <div id="importDropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-2xl p-6 text-center transition cursor-pointer bg-slate-900/40 group" onclick="document.getElementById('batchFileInput').click()" ondragover="handleImportDragOver(event)" ondragleave="handleImportDragLeave(event)" ondrop="handleImportDrop(event)">
+            <input type="file" id="batchFileInput" accept=".zip,.json,.txt" multiple class="hidden" onclick="event.stopPropagation()" onchange="handleBatchFileSelect(event)" />
+            <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition duration-300">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            </div>
+            <p class="text-xs text-white font-medium">点击选择或拖拽文件到此处</p>
+            <p class="text-[11px] text-slate-400 mt-1">支持 <span class="text-indigo-300 font-mono">.zip</span> 备份包、<span class="text-indigo-300 font-mono">.json</span> 凭证文件，或包含 Token 的 <span class="text-indigo-300 font-mono">.txt</span> 文件；支持批量多选</p>
+          </div>
+          <div id="batchFileList" class="text-xs font-mono text-slate-300 max-h-28 overflow-y-auto custom-scroll space-y-1 hidden p-2 bg-slate-900 rounded-xl border border-slate-800"></div>
+        </div>
+
+        <!-- Panel 2: Text Paste -->
+        <div id="importPanelPaste" class="space-y-2 hidden">
+          <p class="text-xs text-slate-400 leading-relaxed">
+            支持 Trae 凭证 JSON、客户端 storage.json 原文、JSON 数组、单/多行原始 Token (<code class="text-indigo-300 font-mono">ey...</code>) 或 <code class="text-indigo-300 font-mono">token----refreshToken</code>：
+          </p>
+          <textarea id="importJsonText" rows="7" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl p-3 text-xs text-slate-200 font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 custom-scroll" placeholder='// 格式 1：标准 JSON 数组或单个 JSON
+[
+  {
+    "auth": { "accessToken": "...", "refreshToken": "...", "realm": "cn" },
+    "account": { "uid": "10001", "nickname": "账号A" }
+  }
+]
+
+// 格式 2：直接粘贴原始 Token (单行或多行)
+eyJhbGciOiJIUzI1Ni...
+
+// 格式 3：卡密分隔格式 (token----refreshToken)
+eyJhbGciOi...----refresh_token_here'></textarea>
+        </div>
+
+        <div id="importError" class="text-xs text-rose-400 font-mono hidden"></div>
+        <div id="importSuccess" class="text-xs text-emerald-400 font-mono hidden"></div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+        <button onclick="closeImportModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white transition">取消</button>
+        <button id="btnSubmitImport" onclick="submitImport()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer">
+          <span>确认导入</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Web Password Modal -->
+  <div id="changePasswordModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+    <div class="glass-panel border border-slate-700/80 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          <span>设置 / 修改控制台管理密码</span>
+        </h3>
+        <button onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-4">
+        <p class="text-xs text-slate-400 leading-relaxed">
+          设置管理密码后，任何访问控制台 Web 页面、查看 Token 数据或导入凭证的操作都需要密码验证。清空密码则恢复为单机免密模式。
+        </p>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-medium text-slate-300">修改对象</label>
+          <select id="passwordTarget" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+            <option value="console" selected>控制台管理密码（web_password 闸 · POST /admin/password）</option>
+            <option value="me">我的登录密码（POST /me/password · 需已登录用户）</option>
+          </select>
+        </div>
+
+        <div id="oldPasswordGroup" class="space-y-1.5 hidden">
+          <label id="labelOldPassword" class="block text-xs font-medium text-slate-300">原管理密码</label>
+          <input id="inputOldPassword" type="password" placeholder="输入当前密码" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label id="labelNewPassword" class="block text-xs font-medium text-slate-300">新管理密码</label>
+          <input id="inputNewPassword" type="password" placeholder="输入新密码（留空表示清除密码、恢复免密）" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono" />
+        </div>
+
+        <div id="changePasswordError" class="text-xs text-rose-400 font-mono hidden"></div>
+        <div id="changePasswordSuccess" class="text-xs text-emerald-400 font-mono hidden">密码更新成功！</div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+        <button onclick="closeChangePasswordModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white transition">取消</button>
+        <button id="btnSubmitPassword" onclick="submitChangePassword()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow transition">保存密码</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Login & Register Overlay -->
+  <div id="loginOverlay" onclick="if(event.target===this) showLoginModal(false)" class="fixed inset-0 bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-panel border border-slate-700/80 rounded-3xl max-w-sm w-full p-8 shadow-2xl relative overflow-hidden text-center space-y-6">
+      <button id="loginCloseBtn" type="button" onclick="showLoginModal(false)" class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer z-10" title="关闭 (Esc)">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+
+      <div class="flex flex-col items-center justify-center space-y-2">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-white tracking-tight">Trae<span class="text-indigo-400">2Api</span></h2>
+        <p id="loginOverlaySub" class="text-xs text-slate-400">Trae2Api · 控制台（/console）</p>
+      </div>
+
+      <!-- Login / Register Switch Tabs -->
+      <div class="flex p-1 bg-slate-900 border border-slate-800 rounded-xl text-xs font-medium">
+        <button id="tabAuthLogin" onclick="switchAuthTab('login')" class="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold transition">
+          账号登录
+        </button>
+        <button id="tabAuthRegister" onclick="switchAuthTab('register')" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition">
+          用户注册
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="formLogin" onsubmit="doLogin(event)" class="space-y-3.5">
+        <div>
+          <input id="loginUsernameInput" type="text" placeholder="用户名" autofocus class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-center text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono transition" />
+        </div>
+        <div>
+          <input id="loginPasswordInput" type="password" placeholder="请输入密码" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-center text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono tracking-wider transition" />
+        </div>
+        <div id="loginErrorMsg" class="text-xs text-rose-400 font-mono hidden"></div>
+
+        <button type="submit" id="loginBtn" class="w-full py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition duration-200">
+          登 录 进 入
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="formRegister" onsubmit="doRegister(event)" class="space-y-3.5 hidden">
+        <div>
+          <input id="regUsernameInput" type="text" placeholder="设定用户名 (字母数字/3-32位)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-center text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono transition" />
+        </div>
+        <div>
+          <input id="regPasswordInput" type="password" placeholder="设定登录密码 (至少6位)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-center text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono tracking-wider transition" />
+        </div>
+        <div>
+          <input id="regPasswordConfirmInput" type="password" placeholder="再次确认登录密码" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-center text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono tracking-wider transition" />
+        </div>
+        <div id="regErrorMsg" class="text-xs text-rose-400 font-mono hidden"></div>
+
+        <p class="text-[11px] text-slate-500 font-mono leading-relaxed">
+          ⚠️ 本机还没有任何用户时，自助注册会失败 —— 第一个账号必须去
+          <b class="text-slate-400">用户管理</b> 标签创建（本机免密时该操作即管理员）。
+          这是刻意的：否则第一个访问者就能拿到管理权。
+        </p>
+
+        <button type="submit" id="regBtn" class="w-full py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition duration-200">
+          立即注册并登录
+        </button>
+      </form>
+
+      <div class="text-[11px] text-slate-500 font-mono">
+        门户 / 与管理中枢 /console 分离 · 账号按归属隔离
+      </div>
+    </div>
+  </div>
+
+  <!-- System Update Modal -->
+  <div id="updateModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+    <div class="glass-panel border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>系统更新检查</span>
+        </h3>
+        <button onclick="closeUpdateModal()" class="text-slate-400 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Checking State -->
+      <div id="updateStateChecking" class="text-center py-8 space-y-3">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"></div>
+        <p class="text-xs text-slate-300 font-medium">正在检查本项目的发布渠道...</p>
+      </div>
+
+      <!-- Result State -->
+      <div id="updateStateResult" class="space-y-4 hidden">
+        <div class="flex items-center justify-between p-3.5 bg-slate-900/60 rounded-xl border border-slate-800">
+          <div>
+            <div class="text-xs text-slate-400">当前版本: <span id="updateModalCurVer" class="font-mono text-slate-200">0.1.0</span></div>
+            <div class="text-sm font-bold text-white mt-0.5">最新版本: <span id="updateModalLatestVer" class="font-mono text-indigo-400">—</span></div>
+          </div>
+          <div id="updateStatusBadge" class="text-xs font-semibold px-3 py-1 rounded-full"></div>
+        </div>
+
+        <div id="updateNotesBox" class="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-300 max-h-48 overflow-y-auto custom-scroll whitespace-pre-wrap font-mono leading-relaxed hidden"></div>
+
+        <div id="updateDockerTip" class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs leading-relaxed hidden">
+          🐳 <b>检测到当前为 Docker 容器部署：</b><br>
+          在宿主机执行以下命令即可平滑更新，数据自动保留：<br>
+          <code class="block mt-1 p-2 bg-slate-900 rounded font-mono text-[11px] text-amber-200 select-all">git pull origin main && docker compose up -d --build --build</code>
+        </div>
+
+        <div id="updateErrorMsg" class="text-xs text-rose-400 font-mono hidden"></div>
+        <div id="updateSuccessMsg" class="text-xs text-emerald-400 font-mono hidden"></div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+        <button onclick="closeUpdateModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white transition">关闭</button>
+        <button id="btnDoUpdate" onclick="triggerAppUpdate()" class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition hidden">
+          一键自动升级并重启
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*__CONSOLE_JS__*/
+</script>
+</body>
+</html>

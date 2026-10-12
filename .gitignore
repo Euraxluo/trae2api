@@ -1,0 +1,36 @@
+# 编译产物
+/trae2api-server
+/trae2api-server.exe
+*.exe
+*.exe~
+*.exe.bak
+run/data/
+# 交叉编译产物（release 工作流生成，约 58MB，绝不入库）
+dist/
+
+# 运行时状态（含账号冷却/熔断快照，可能含 UID，不入库）
+data/
+*.log
+cookies.txt
+console.html
+
+# 临时研究与抓包探针文件（避免误提交到开源仓库）
+auth_page*.js
+chunk*.js
+main.js
+runtime.js
+big.png
+trae_intl_auth.html
+run/
+
+# 本地配置（可能含 api_key 与账号路径）
+config.json
+run/config.json
+secrets/
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
