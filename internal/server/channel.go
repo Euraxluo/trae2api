@@ -276,9 +276,8 @@ func BuildChannels(cfg *config.Config, p *pool.Pool, accStore *accountstore.Stor
 			// 是最自然的做法（storage.json 与 state.vscdb 是兄弟文件）。
 			catalog, cerr := traectl.LoadCatalog(s.product, traectl.StateDBPathBeside(store.Path()))
 			if cerr != nil {
-				// 目录失败不阻止渠道可用：仍可透传模型名（上游会给出明确错误）
-				log.Printf("WARN: [%s] 模型目录加载失败（将不列出模型）: %v", s.product.Label, cerr)
-				catalog = &traectl.Catalog{Product: s.product, Function: s.product.Function}
+				log.Printf("INFO: [%s] 本地未找到 state.vscdb，使用官方内置默认模型目录: %v", s.product.Label, cerr)
+				catalog = traectl.DefaultCatalog(s.product)
 			}
 			ch = &Channel{
 				Realm: rk, Product: s.product, Catalog: catalog,
@@ -311,6 +310,24 @@ func BuildChannels(cfg *config.Config, p *pool.Pool, accStore *accountstore.Stor
 
 		log.Printf("INFO: [%s] 账号就绪: uid=%s label=%s user=%s token至=%s",
 			s.product.Label, uid, label, cred.UserID, cred.ExpiredAt)
+	}
+
+	// 确保所有已知且启用的产品对应的渠道均已初始化（即使当前暂无账号），
+	// 以便 /v1/models 与控制台 Playground 能立即列出各域支持的官方模型。
+	for _, prod := range traectl.Products {
+		rk := RealmOfProduct(prod.Key)
+		if rk == "" {
+			continue
+		}
+		if _, ok := channels[rk]; !ok {
+			channels[rk] = &Channel{
+				Realm:    rk,
+				Product:  prod,
+				Catalog:  traectl.DefaultCatalog(prod),
+				accounts: map[string]*pool.Account{},
+				client:   newTraeClient(cfg, prod),
+			}
+		}
 	}
 
 	if opened == 0 {

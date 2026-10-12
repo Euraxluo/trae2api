@@ -1059,8 +1059,11 @@
             </p>
             <div class="flex flex-col sm:flex-row gap-2">
               <input id="oauthCallbackUrlInput" type="text" placeholder="粘贴跳转后的完整网址（包含 127.0.0.1 或 query 参数）" class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono transition" />
-              <button id="btnSubmitOAuthCallback" onclick="submitManualOAuthCallback()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30 transition whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5">
-                <span>立即提交授权</span>
+              <button type="button" onclick="pasteAndSubmitOAuthCallback()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap" title="一键读取剪贴板并自动提交">
+                <span>📋 粘贴并提交</span>
+              </button>
+              <button id="btnSubmitOAuthCallback" type="button" onclick="submitManualOAuthCallback()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30 transition whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5">
+                <span>提交</span>
               </button>
             </div>
           </div>

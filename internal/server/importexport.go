@@ -358,7 +358,7 @@ func (s *Server) registerAccount(snap *traectl.CredentialSnapshot, path string) 
 		// 该 realm 还没有渠道（例如启动时没有任何账号）：新建一个
 		catalog, cerr := traectl.LoadCatalog(prod, traectl.StateDBPathBeside(path))
 		if cerr != nil {
-			catalog = &traectl.Catalog{Product: prod, Function: prod.Function}
+			catalog = traectl.DefaultCatalog(prod)
 		}
 		ch = &Channel{
 			Realm: rk, Product: prod, Catalog: catalog,

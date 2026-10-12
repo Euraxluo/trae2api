@@ -1278,6 +1278,21 @@ async function openOAuthModal(productKey) {
   }
 }
 
+async function pasteAndSubmitOAuthCallback() {
+  try {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      var text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        var input = $('oauthCallbackUrlInput');
+        if (input) input.value = text.trim();
+        toast('已从剪贴板读取网址，正在提交授权...', 'info');
+        return submitManualOAuthCallback();
+      }
+    }
+  } catch (e) { /* 剪贴板权限可能被浏览器阻止，降级由用户手动粘贴 */ }
+  submitManualOAuthCallback();
+}
+
 async function submitManualOAuthCallback() {
   var input = $('oauthCallbackUrlInput');
   var raw = input ? input.value.trim() : '';

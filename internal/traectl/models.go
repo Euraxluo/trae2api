@@ -473,3 +473,73 @@ func sortedPoolNames(m map[string]int) []string {
 	sort.Strings(out)
 	return out
 }
+
+// DefaultCatalog 返回指定产品的官方内置默认模型目录。
+//
+// 当运行在 Docker、Linux VPS 或未安装对应 Trae 桌面客户端的环境中时（找不到 state.vscdb），
+// 用这份内置目录作为兜底，确保 /v1/models 与控制台 Playground 能正常列出与使用所有官方模型。
+func DefaultCatalog(p Product) *Catalog {
+	var models []Model
+	switch p.Key {
+	case "trae-intl", "solo-intl":
+		models = []Model{
+			{ID: "claude-3-7-sonnet", Display: "Claude 3.7 Sonnet", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 1.0, ModelType: "chat_model", Reasoning: true, ReasoningDefault: "high", Function: p.Function},
+			{ID: "claude-3-5-sonnet", Display: "Claude 3.5 Sonnet", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 1.0, ModelType: "chat_model", Function: p.Function},
+			{ID: "claude-3-5-haiku", Display: "Claude 3.5 Haiku", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.25, ModelType: "chat_model", Function: p.Function},
+			{ID: "gpt-4o", Display: "GPT-4o", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 1.0, ModelType: "chat_model", Function: p.Function},
+			{ID: "gpt-4o-mini", Display: "GPT-4o Mini", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.1, ModelType: "chat_model", Function: p.Function},
+			{ID: "o1", Display: "o1", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 2.0, ModelType: "reasoning_model", Reasoning: true, Function: p.Function},
+			{ID: "o3-mini", Display: "o3-mini", Multimodal: false, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.5, ModelType: "reasoning_model", Reasoning: true, Function: p.Function},
+			{ID: "deepseek-v3", Display: "DeepSeek-V3", Multimodal: false, NativeFC: true, ContextWindow: 64000, ConsumptionRate: 0.2, ModelType: "chat_model", Function: p.Function},
+			{ID: "deepseek-r1", Display: "DeepSeek-R1", Multimodal: false, NativeFC: true, ContextWindow: 64000, ConsumptionRate: 0.5, ModelType: "reasoning_model", Reasoning: true, Function: p.Function},
+			{ID: "gemini-2.0-flash", Display: "Gemini 2.0 Flash", Multimodal: true, NativeFC: true, ContextWindow: 1048576, ConsumptionRate: 0.2, ModelType: "chat_model", Function: p.Function},
+		}
+	case "solo-cn":
+		models = []Model{
+			{ID: "DeepSeek-V4-Flash-Official", Display: "DeepSeek-V4-Flash 正式版", Multimodal: false, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.08, ModelType: "chat_model", Function: p.Function},
+			{ID: "DeepSeek-V4-Pro-Official", Display: "DeepSeek-V4-Pro 正式版", Multimodal: false, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.36, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-2.1-Pro", Display: "Seed-2.1-Pro-0915", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.80, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-2.1-Turbo", Display: "Seed-2.1-Turbo", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.20, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-Evolving", Display: "Seed-Evolving", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.80, ModelType: "chat_model", Function: p.Function},
+			{ID: "deepseek-v4.1-flash", Display: "DeepSeek-V4.1-Flash", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.06, ModelType: "chat_model", Function: p.Function},
+			{ID: "glm-5.2", Display: "GLM-5.2", Multimodal: false, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.78, ModelType: "chat_model", Function: p.Function},
+			{ID: "glm-5.3", Display: "GLM-5.3", Multimodal: false, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.78, ModelType: "chat_model", Function: p.Function},
+			{ID: "kimi-k2.6", Display: "Kimi-K2.6", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.75, ModelType: "chat_model", Function: p.Function},
+			{ID: "kimi-k2.7-code", Display: "Kimi-K2.7-Code", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.83, ModelType: "chat_model", Function: p.Function},
+			{ID: "kimi-k3", Display: "Kimi-K3", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 1.83, ModelType: "chat_model", Function: p.Function},
+			{ID: "minimax-m3", Display: "MiniMax-M3", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.26, ModelType: "chat_model", Function: p.Function},
+			{ID: "qwen-3.7-plus", Display: "Qwen3.7-Plus", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.25, ModelType: "chat_model", Function: p.Function},
+			{ID: "qwen3.8-max", Display: "Qwen3.8-Max", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 1.50, ModelType: "chat_model", Function: p.Function},
+			{ID: "step-5-preview", Display: "Step-5-Preview", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.48, ModelType: "chat_model", Function: p.Function},
+		}
+	default: // trae-cn
+		models = []Model{
+			{ID: "DeepSeek-V4-Flash-Official", Display: "DeepSeek-V4-Flash", Multimodal: false, NativeFC: true, ContextWindow: 116000, ConsumptionRate: 0.20, ModelType: "chat_model", Function: p.Function},
+			{ID: "DeepSeek-V4-Pro-Official", Display: "DeepSeek-V4-Pro", Multimodal: false, NativeFC: true, ContextWindow: 116000, ConsumptionRate: 0.72, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-2.1-Pro", Display: "Seed-2.1-Pro-0915", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.08, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-2.1-Turbo", Display: "Seed-2.1-Turbo", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.20, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-Code", Display: "Seed-Code", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.06, ModelType: "chat_model", Function: p.Function},
+			{ID: "Doubao-Seed-Evolving", Display: "Seed-Evolving", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.08, ModelType: "chat_model", Function: p.Function},
+			{ID: "deepseek-v4.1-flash", Display: "DeepSeek-V4-Flash 正式版", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.15, ModelType: "chat_model", Function: p.Function},
+			{ID: "glm-5.2", Display: "GLM-5.2", Multimodal: false, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.78, ModelType: "chat_model", Function: p.Function},
+			{ID: "glm-5.3", Display: "GLM-5.3", Multimodal: false, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.78, ModelType: "chat_model", Function: p.Function},
+			{ID: "glm-5.3-flash", Display: "GLM-5.3-Flash", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.06, ModelType: "chat_model", Function: p.Function},
+			{ID: "glm-5.3-flashx", Display: "GLM-5.3-FlashX", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.31, ModelType: "chat_model", Function: p.Function},
+			{ID: "kimi-k2.8-preview", Display: "Kimi-K2.8-Preview", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 0.98, ModelType: "chat_model", Function: p.Function},
+			{ID: "kimi-k3", Display: "Kimi-K3", Multimodal: true, NativeFC: true, ContextWindow: 200000, ConsumptionRate: 1.83, ModelType: "chat_model", Function: p.Function},
+			{ID: "mimo-v2.6-flash", Display: "MiMo-V2.6-Flash", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.06, ModelType: "chat_model", Function: p.Function},
+			{ID: "mimo-v2.6-pro", Display: "MiMo-V2.6-Pro", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.15, ModelType: "chat_model", Function: p.Function},
+			{ID: "minimax-m3", Display: "MiniMax-M3", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.26, ModelType: "chat_model", Function: p.Function},
+			{ID: "qwen-3.7-plus", Display: "Qwen3.7-Plus", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.25, ModelType: "chat_model", Function: p.Function},
+			{ID: "qwen3.8-flash", Display: "Qwen3.8-Flash", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.08, ModelType: "chat_model", Function: p.Function},
+			{ID: "qwen3.8-max", Display: "Qwen3.8-Max", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 1.50, ModelType: "chat_model", Function: p.Function},
+			{ID: "step-5-preview", Display: "Step-5-Preview", Multimodal: true, NativeFC: true, ContextWindow: 128000, ConsumptionRate: 0.48, ModelType: "chat_model", Function: p.Function},
+		}
+	}
+	return &Catalog{
+		Product:    p,
+		Function:   p.Function,
+		Models:     models,
+		SourcePath: "(builtin default)",
+	}
+}
