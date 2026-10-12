@@ -828,4 +828,3 @@ func htmlEscape(s string) string {
 	s = strings.ReplaceAll(s, "\"", "&quot;")
 	return strings.ReplaceAll(s, "'", "&#39;")
 }
-
