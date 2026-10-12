@@ -659,9 +659,12 @@ func (p *Pool) NoteFailures(uid string) bool {
 		return false
 	}
 	a.consecutiveFails = 0
+	now := time.Now()
 	// 已在降权期内再次达阈：**不延长、不翻倍**。
 	// 否则用户的重试会把降权越堆越厚，最终账号被无限期排除。
-	a.degradeUntil = time.Now().Add(p.degradeDuration())
+	if a.degradeUntil.Before(now) {
+		a.degradeUntil = now.Add(p.degradeDuration())
+	}
 	return true
 }
 

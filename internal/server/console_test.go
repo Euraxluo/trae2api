@@ -587,7 +587,8 @@ func consoleProbeServer(t *testing.T) (*httptest.Server, *http.Client) {
 // 也就是"这条路径没有被任何真端点服务"）算作失败；handler 自己返回的 404
 // （例如"账号不存在"，通常是 JSON）说明请求已经到达了真实 handler，不算失败。
 func realProbe(c *http.Client, base, method, target string) (status int, body string, err error) {
-	req, err := http.NewRequest(method, base+"/"+target, nil)
+	reqPath := "/" + strings.TrimPrefix(target, "/")
+	req, err := http.NewRequest(method, base+reqPath, nil)
 	if err != nil {
 		return 0, "", err
 	}
