@@ -1,0 +1,40 @@
+{
+  "note": "冻结契约端点的**机器可读**清单（plan.md「冻结的接口契约」+ C9/C10/C11 验收标准）。离线路由表闸、Go 集成闸、活体探测闸共用这一份，任何一处漏端点在另两处必然暴露。",
+  "freeze_source": "plan.md 第 55-144 行（A/B/C/D 四节）与验收标准表 C8/C9/C10/C11",
+  "reject_status": [404, 405],
+  "endpoints": [
+    { "role": "backend-accounts", "criterion": "C9", "method": "POST", "path": "/admin/accounts/revive", "auth": "admin", "body": { "uids": [], "all": false } },
+    { "role": "backend-accounts", "criterion": "C9", "method": "POST", "path": "/admin/accounts/control", "auth": "admin", "body": { "uids": [], "all": false, "action": "disable" } },
+    { "role": "backend-accounts", "criterion": "C9", "method": "POST", "path": "/admin/accounts/delete", "auth": "admin", "body": { "uids": [] } },
+
+    { "role": "backend-auth", "criterion": "C10", "method": "GET", "path": "/admin/system", "auth": "public" },
+    { "role": "backend-auth", "criterion": "C10", "method": "POST", "path": "/admin/system/allow_register", "auth": "admin", "body": { "enabled": false } },
+    { "role": "backend-auth", "criterion": "C10", "method": "POST", "path": "/auth/register", "auth": "public", "body": {} },
+    { "role": "backend-auth", "criterion": "C10", "method": "POST", "path": "/auth/login", "auth": "public", "body": {} },
+    { "role": "backend-auth", "criterion": "C10", "method": "POST", "path": "/auth/logout", "auth": "public", "body": {} },
+    { "role": "backend-auth", "criterion": "C10", "method": "POST", "path": "/me/password", "auth": "admin", "body": {} },
+    { "role": "backend-auth", "criterion": "C10", "method": "POST", "path": "/me/api-key/reset", "auth": "admin", "body": {} },
+    { "role": "backend-auth", "criterion": "C8", "method": "POST", "path": "/admin/users/{id}/reset-password", "auth": "admin", "probe_path": "/admin/users/probe-id/reset-password", "body": { "password": "probe-password-123" }, "not_found_ok": true, "not_found_reason": "探针用不存在的 probe-id 调用，既有实现在 auth.go:611 正确返回 404 user_not_found —— 这是业务语义，不是端点缺失（2026-10-11 首跑此闸时误报过这一条，故显式豁免）" },
+
+    { "role": "backend-dsh", "criterion": "C11", "method": "GET", "path": "/admin/dsh/status", "auth": "admin" },
+    { "role": "backend-dsh", "criterion": "C11", "method": "POST", "path": "/admin/dsh/start", "auth": "admin", "body": {} },
+    { "role": "backend-dsh", "criterion": "C11", "method": "POST", "path": "/admin/dsh/stop", "auth": "admin", "body": {} },
+    { "role": "backend-dsh", "criterion": "C11", "method": "POST", "path": "/admin/dsh/install", "auth": "admin", "body": {} },
+    { "role": "backend-dsh", "criterion": "C11", "method": "POST", "path": "/admin/dsh/reset", "auth": "admin", "body": {} },
+    { "role": "backend-dsh", "criterion": "C11", "method": "GET", "path": "/admin/dsh/export", "auth": "admin" },
+    { "role": "backend-dsh", "criterion": "D", "method": "GET", "path": "/admin/system/update/check", "auth": "admin" },
+
+    { "role": "console-ui", "criterion": "C12", "method": "GET", "path": "/healthz", "auth": "public" },
+    { "role": "console-ui", "criterion": "C12", "method": "GET", "path": "/v1/models", "auth": "admin" },
+    { "role": "console-ui", "criterion": "C6", "method": "GET", "path": "/v1/stats", "auth": "admin" },
+    { "role": "console-ui", "criterion": "C7", "method": "POST", "path": "/v1/chat/completions", "auth": "admin", "body": {} },
+    { "role": "console-ui", "criterion": "C8", "method": "GET", "path": "/admin/users", "auth": "admin" },
+    { "role": "console-ui", "criterion": "C8", "method": "POST", "path": "/admin/users", "auth": "admin", "body": {} },
+    { "role": "console-ui", "criterion": "C8", "method": "POST", "path": "/admin/users/{id}/role", "auth": "admin", "probe_path": "/admin/users/probe-id/role", "body": { "role": "user" }, "not_found_ok": true, "not_found_reason": "既有实现在 users.go:113 对不存在的 id 正确返回 404 not_found；路由本身命中 POST /admin/users/{id}/role" },
+    { "role": "console-ui", "criterion": "C8", "method": "POST", "path": "/admin/users/{id}/disable", "auth": "admin", "probe_path": "/admin/users/probe-id/disable", "body": {}, "not_found_ok": true, "not_found_reason": "同上：对不存在的 id 返回 400/404 都是业务语义（users.go:137），路由已命中" },
+    { "role": "console-ui", "criterion": "C8", "method": "POST", "path": "/admin/users/{id}/reset-key", "auth": "admin", "probe_path": "/admin/users/probe-id/reset-key", "body": {}, "not_found_ok": true, "not_found_reason": "同上：users.go:126" },
+    { "role": "console-ui", "criterion": "C8", "method": "DELETE", "path": "/admin/users/{id}", "auth": "admin", "probe_path": "/admin/users/probe-id", "not_found_ok": true, "not_found_reason": "同上：users.go:149" },
+    { "role": "console-ui", "criterion": "C5", "method": "GET", "path": "/admin/accounts", "auth": "admin" },
+    { "role": "console-ui", "criterion": "C3", "method": "GET", "path": "/console", "auth": "public" }
+  ]
+}

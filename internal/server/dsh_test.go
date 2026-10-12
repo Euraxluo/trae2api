@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -40,21 +41,25 @@ func TestDSHHelperProcess(t *testing.T) {
 	if mode == "" {
 		return
 	}
+	// 等父进程来收：SIGTERM/SIGINT 都要能优雅退出。
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+
 	switch mode {
 	case "exit":
 		// 模拟"起来就崩"（dsh 的配置/凭据有问题时就是这样）
 		os.Exit(3)
 	case "noprint":
 		// 模拟"起来了但从不打印地址"（卡在初始化里）
-		time.Sleep(60 * time.Second)
+		select {
+		case <-ch:
+		case <-time.After(60 * time.Second):
+		}
 		return
 	}
 	// 真实 dsh 的 stdout 契约（本机实测，见 dsh.go 顶部注释）：
 	//     dsh web: http://127.0.0.1:52368/?token=<token>
 	fmt.Println("dsh web: http://127.0.0.1:54321/?token=fake-token-abc123")
-	// 等父进程来收：SIGTERM/SIGINT 都要能优雅退出。
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	select {
 	case <-ch:
 	case <-time.After(60 * time.Second):
@@ -465,6 +470,11 @@ func TestDSHStartTimeoutReclaimsProcess(t *testing.T) {
 	if run == nil {
 		t.Fatal("spawn 失败时应把 run 一起返回，否则无法确认进程被回收")
 	}
+	select {
+	case <-run.exited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("超时回收后子进程在指定时间内未退出")
+	}
 	if run.cmd.ProcessState == nil || !run.cmd.ProcessState.Exited() {
 		t.Fatal("超时后子进程没有被回收 —— 这就是孤儿进程")
 	}
@@ -650,6 +660,9 @@ func TestDSHStopForExitKillsImmediately(t *testing.T) {
 // asar 当目录解析）。第一版代码查的是 cli.js 的存在性，于是"明明装了桌面版
 // 却报 dsh_not_found" —— 而且单测全绿，因为那些测试只覆盖"找不到时如实报错"。
 func TestDSHDesktopDetectionChecksAsarNotInnerPath(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("桌面版自动探测仅支持 Windows 平台（基于 LOCALAPPDATA 布局）")
+	}
 	root := t.TempDir()
 	install := filepath.Join(root, "Programs", "DeepSeek Harness")
 	if err := os.MkdirAll(filepath.Join(install, "resources"), 0o755); err != nil {

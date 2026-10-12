@@ -31,7 +31,12 @@ package server
 // （记录中的 /console、/dashboard、/portal/status 这些精确模式才是真命中）。
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +47,9 @@ import (
 	"strings"
 	"testing"
 
+	"trae2api/internal/accountstore"
 	"trae2api/internal/config"
+	"trae2api/internal/traectl"
 )
 
 // contractProbeEndpoint 是清单里的一条冻结契约端点。
@@ -103,15 +110,22 @@ func contractGateRepoRoot(t *testing.T) string {
 
 // contractGateManifestPath 定位冻结契约清单。
 //
-// 以仓库根为锚点（见 contractGateRepoRoot），因此与调用方的 CWD 无关。
+// 优先查找 internal/server/contract-endpoints.json（打包进仓库的文件），
+// 兼容老开发环境中的 ..\.dsh-team 路径。
 func contractGateManifestPath(t *testing.T) string {
 	t.Helper()
 	repo := contractGateRepoRoot(t)
-	p := filepath.Join(repo, "..", ".dsh-team", "trae2api-console", "work", "coordinator", "contract-endpoints.json")
-	if _, err := os.Stat(p); err != nil {
-		t.Fatalf("找不到冻结契约清单 %s: %v —— 清单是这道闸的输入，缺失即闸失效（不静默跳过）", p, err)
+	candidates := []string{
+		filepath.Join(repo, "internal", "server", "contract-endpoints.json"),
+		filepath.Join(repo, "..", ".dsh-team", "trae2api-console", "work", "coordinator", "contract-endpoints.json"),
 	}
-	return p
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	t.Fatalf("找不到冻结契约清单（候选: %v）—— 清单是这道闸的输入，缺失即闸失效", candidates)
+	return ""
 }
 
 func loadContractGateManifest(t *testing.T) contractProbeManifest {
@@ -140,12 +154,47 @@ func loadContractGateManifest(t *testing.T) contractProbeManifest {
 // "路由存在"，而证明不了"端点在生产构造路径下也不会内部炸掉"。
 // 用 New() 顺带覆盖了"构造函数忘了接线"这一类只在启动时才暴露的事故
 // （见 wiring_test.go 记录的那次 IdleTimeout 死代码事故）。
+//
+// CI / 裸机兼容：在无本地 Trae 客户端的环境下，向 accounts 目录注入一份
+// 最小有效快照，让 New(cfg) 能成功构建渠道进入就绪态。
 func contractGateServer(t *testing.T) *Server {
 	t.Helper()
 	cfg := config.Default()
 	cfg.DataDir = t.TempDir()
 	cfg.APIKey = contractGateGlobalKey
 	cfg.WebPassword = ""
+
+	store := accountstore.New(cfg.AccountsDir())
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+	pubPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER}))
+
+	snap := &traectl.CredentialSnapshot{
+		Product:       "trae-cn",
+		UserID:        "gate-user-1",
+		Label:         "集成闸模拟账号",
+		Token:         "tok-gate",
+		RefreshToken:  "ref-gate",
+		DeviceID:      "1234567890",
+		MachineID:     "abcdef",
+		PrivateKeyPEM: privPEM,
+		PublicKeyPEM:  pubPEM,
+	}
+	if _, err := store.Add(snap); err != nil {
+		t.Fatalf("初始化集成闸模拟账号失败: %v", err)
+	}
+
 	s, err := New(cfg)
 	if err != nil {
 		t.Fatalf("New(cfg) 失败（闸无法在真实构造路径上运行）: %v", err)

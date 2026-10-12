@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -240,6 +241,9 @@ func TestDSHInstallVerdictStates(t *testing.T) {
 // 用真实文件系统造一个"桌面版安装"（exe + app.asar 两个普通文件），
 // 断言 detectDesktop 认得出它、并且报的是 **exe 路径**（用户能据此确认装在哪）。
 func TestDSHInstallDescriptorReportsFoundPath(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("桌面版自动探测仅支持 Windows 平台（基于 LOCALAPPDATA 布局）")
+	}
 	root := t.TempDir()
 	install := filepath.Join(root, "Programs", "DeepSeek Harness")
 	if err := os.MkdirAll(filepath.Join(install, "resources"), 0o755); err != nil {
