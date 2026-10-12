@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"trae2api/internal/vscdb"
@@ -48,10 +49,13 @@ type Model struct {
 	// （2026-10 补齐：原实现只解析了少数字段，漏掉了倍率、图标、
 	//  嵌套的多模态/推理开关等 —— 那些才是控制台要展示的东西。）
 
-	// FeeModelLevel 是**积分倍率档位**（fee_model_level）。
-	// 官方模型实测全为 2，自建渠道（custom_openai_compatible//…）为 0（未下发）。
-	// 0 表示"上游未下发"，展示时应显示为"—"而不是"0 倍"。
+	// FeeModelLevel 是上游的费用等级（fee_model_level），官方模型多为 2。
 	FeeModelLevel int
+	// ConsumptionRate 是**真实积分消耗倍率**（来自 features.consumption_rate.data.rate，
+	// 若存在 activity_discount 且生效则优先取活动折扣率）。
+	ConsumptionRate float64
+	// Multiplier 是格式化后的倍率字符串（如 "0.78x", "1.5x", "0.08x"；未下发时为 "—"）。
+	Multiplier string
 	// ModelType 模型类型：chat_model / reasoning_model。
 	ModelType string
 	// Reasoning 是否支持推理（思维链）。
@@ -85,16 +89,28 @@ type Model struct {
 	MaxMode bool
 }
 
-// MultiplierDisplay 返回倍率的人类可读形式。
+// MultiplierDisplay 返回真实消耗倍率的人类可读形式。
 //
-// 为什么返回字符串而不是数字：**"未下发"和"0 倍"是两件事**。
-// 自建渠道模型没有 fee_model_level，把它显示成"0 倍"会让人以为免费。
-// 所以未下发时返回 "—"，由调用方原样展示。
+// 优先使用真实的 ConsumptionRate（如 "0.78x", "1.5x", "0.08x"）。
+// 若只有 FeeModelLevel，则回落到 "%dx"；未下发时返回 "—"。
 func (m Model) MultiplierDisplay() string {
+	if m.Multiplier != "" {
+		return m.Multiplier
+	}
+	if m.ConsumptionRate > 0 {
+		return formatRate(m.ConsumptionRate)
+	}
 	if m.FeeModelLevel <= 0 {
 		return "—"
 	}
 	return fmt.Sprintf("%dx", m.FeeModelLevel)
+}
+
+func formatRate(rate float64) string {
+	s := strconv.FormatFloat(rate, 'f', 2, 64)
+	s = strings.TrimRight(s, "0")
+	s = strings.TrimRight(s, ".")
+	return s + "x"
 }
 
 // Catalog 是某产品在某个 function 池下的模型目录。
@@ -248,6 +264,24 @@ type rawModel struct {
 			MaxTurns   int `json:"max_turns"`
 		} `json:"data"`
 	} `json:"context_windows"`
+
+	// Features 包含真实的倍率（consumption_rate）与活动折扣（activity_discount）
+	Features struct {
+		ConsumptionRate struct {
+			Enable bool `json:"enable"`
+			Data   struct {
+				Rate float64 `json:"rate"`
+			} `json:"data"`
+		} `json:"consumption_rate"`
+		ActivityDiscount struct {
+			Enable bool `json:"enable"`
+			Data   struct {
+				Current struct {
+					ConsumptionRate float64 `json:"consumption_rate"`
+				} `json:"current"`
+			} `json:"data"`
+		} `json:"activity_discount"`
+	} `json:"features"`
 }
 
 // customConfig 是 custom_config 字段（它本身是一个 JSON 字符串）的结构子集。
@@ -348,6 +382,14 @@ func LoadCatalog(p Product, dbPath string) (*Catalog, error) {
 			DevContext:       rm.ContextWindows.Data.DevContext,
 			MaxContext:       rm.ContextWindows.Data.MaxContext,
 		}
+
+		// 真实消耗倍率：优先取活动折扣 rate，否则取 base rate
+		rate := rm.Features.ConsumptionRate.Data.Rate
+		if rm.Features.ActivityDiscount.Enable && rm.Features.ActivityDiscount.Data.Current.ConsumptionRate > 0 {
+			rate = rm.Features.ActivityDiscount.Data.Current.ConsumptionRate
+		}
+		m.ConsumptionRate = rate
+		m.Multiplier = m.MultiplierDisplay()
 		// 上下文窗口：顶层 context_window_size 实测多为 null，
 		// 此时用嵌套的 dev_context 兜底（它才是客户端实际用的那个）。
 		if m.ContextWindow == 0 {

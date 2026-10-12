@@ -662,7 +662,7 @@ function renderModels(models, accounts) {
         : '<span class="text-[10px] font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded">' + escapeHtml(rl) + '</span>');
 
     var creditsBadge = (m.multiplier && m.multiplier !== '—')
-      ? '<span class="text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded font-semibold" title="上游 fee_model_level 倍率">' + escapeHtml(m.multiplier) + '</span>'
+      ? '<span class="text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded font-semibold" title="上游真实消耗倍率">' + escapeHtml(m.multiplier) + '</span>'
       : '';
     var visionBadge = m.multimodal
       ? '<span class="text-[10px] font-mono bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.2 rounded" title="支持图片 / 文档多模态">✨ 多模态</span>'

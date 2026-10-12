@@ -378,6 +378,7 @@ func (c *Channel) ModelEntries() []map[string]any {
 			// 为什么要两个：0 表示"上游未下发"，直接展示成 "0x" 会让人以为免费，
 			// 所以 display 侧统一处理成 "—"。
 			"fee_model_level":   m.FeeModelLevel,
+			"consumption_rate":  m.ConsumptionRate,
 			"multiplier":        m.MultiplierDisplay(),
 			"model_type":        m.ModelType,
 			"reasoning":         m.Reasoning,
