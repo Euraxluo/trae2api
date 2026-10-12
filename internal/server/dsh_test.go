@@ -405,7 +405,7 @@ func TestDSHStartStopIdempotent(t *testing.T) {
 	default:
 		t.Fatal("停止后子进程没有被回收（exited 未关闭）")
 	}
-	if run.cmd.ProcessState == nil || !run.cmd.ProcessState.Exited() {
+	if run.cmd.ProcessState == nil {
 		t.Fatal("停止后子进程没有被 Wait 回收（ProcessState 为空）")
 	}
 }
@@ -475,7 +475,7 @@ func TestDSHStartTimeoutReclaimsProcess(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("超时回收后子进程在指定时间内未退出")
 	}
-	if run.cmd.ProcessState == nil || !run.cmd.ProcessState.Exited() {
+	if run.cmd.ProcessState == nil {
 		t.Fatal("超时后子进程没有被回收 —— 这就是孤儿进程")
 	}
 }
@@ -648,7 +648,7 @@ func TestDSHStopForExitKillsImmediately(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("stopForExit 后子进程没有被回收 —— 这就是孤儿")
 	}
-	if run.cmd.ProcessState == nil || !run.cmd.ProcessState.Exited() {
+	if run.cmd.ProcessState == nil {
 		t.Error("子进程没有被 Wait 回收（ProcessState 为空）")
 	}
 }
