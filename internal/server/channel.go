@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -315,8 +314,7 @@ func BuildChannels(cfg *config.Config, p *pool.Pool, accStore *accountstore.Stor
 	}
 
 	if opened == 0 {
-		return nil, fmt.Errorf("没有可用账号：请确认本机已安装并登录 Trae CN / TRAE SOLO CN，" +
-			"或在 config 的 trae.accounts 中显式指定 storage.json 路径")
+		log.Printf("WARN: 当前未检测到可用账号（本机未找到 Trae CN/SOLO 客户端或凭据文件）。网关已就绪，请在 Web 控制台导入账号或通过配置指定。")
 	}
 	for rk, ch := range channels {
 		log.Printf("INFO: 渠道 %s 就绪: %s, %d 个账号, %d 个模型, function=%s",
