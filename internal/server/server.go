@@ -454,6 +454,18 @@ func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
+		// 1.5) 控制台用户会话 Cookie（支持通过 Web 登录后无缝调用受保护端点）
+		if u := s.sessionUser(w, r); u != nil {
+			next(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, u)))
+			return
+		}
+		// 1.6) 控制台密码闸门禁 Cookie（已通过 web_password 鉴权的管理端会话）
+		if s.webAuth != nil && s.webAuth.Enabled() && s.consoleAuthed(r) {
+			root := &usermgr.User{ID: "root", Username: "root", Role: usermgr.RoleAdmin}
+			next(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, root)))
+			return
+		}
+
 		// 2) 全局 Key（管理员）
 		if s.cfg.APIKey != "" {
 			if key != "" && subtle.ConstantTimeCompare([]byte(key), []byte(s.cfg.APIKey)) == 1 {

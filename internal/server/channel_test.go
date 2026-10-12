@@ -1,10 +1,18 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"trae2api/internal/config"
+	"trae2api/internal/pool"
+	"trae2api/internal/realm"
+	"trae2api/internal/traectl"
 )
 
 // TestIsClientNotInstalled 区分"客户端没装"与"凭据读不出来"。
@@ -47,3 +55,83 @@ func TestIsClientNotInstalled(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildChannelsAndHandleModels(t *testing.T) {
+	cfg := config.Default()
+	_ = traectl.ConfigureIntl(traectl.IntlConfig{
+		Enabled:      cfg.Intl.Enabled,
+		UGHost:       cfg.Intl.UGHost,
+		ChatHost:     cfg.Intl.ChatHost,
+		TraeClientID: cfg.Intl.TraeClientID,
+		SoloClientID: cfg.Intl.SoloClientID,
+	})
+	p := pool.New(pool.Options{MaxInFlight: 1})
+	channels, err := BuildChannels(cfg, p, nil)
+	if err != nil {
+		t.Fatalf("BuildChannels failed: %v", err)
+	}
+	s := &Server{
+		cfg:      cfg,
+		pool:     p,
+		channels: channels,
+	}
+	w := httptest.NewRecorder()
+	s.handleModels(w, httptest.NewRequest(http.MethodGet, "/v1/models", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("handleModels status: %d", w.Code)
+	}
+	var resp struct {
+		Data []map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	foundRealms := map[string]bool{}
+	for _, m := range resp.Data {
+		r, _ := m["realm"].(string)
+		if r != "" {
+			foundRealms[r] = true
+		}
+	}
+	for _, rk := range []string{realm.Trae, realm.Solo, realm.TraeIntl, realm.SoloIntl} {
+		if !foundRealms[rk] {
+			t.Errorf("realm %q not found in /v1/models output", rk)
+		}
+	}
+}
+
+func TestWithAuthConsoleCookie(t *testing.T) {
+	wa := newWebAuth("admin123")
+	tok := wa.NewSession()
+	s := &Server{
+		cfg:     &config.Config{APIKey: "secret-key"},
+		webAuth: wa,
+	}
+	nextCalled := false
+	handler := s.withAuth(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		if !isAdmin(r) {
+			t.Error("expected admin from console cookie")
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// 1) 未携带 Cookie 且未携带 API Key -> 401
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	handler(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", rec.Code)
+	}
+
+	// 2) 携带 trae2api_console Cookie -> 200
+	nextCalled = false
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/status", nil)
+	req.AddCookie(&http.Cookie{Name: webAuthCookie, Value: tok})
+	handler(rec, req)
+	if rec.Code != http.StatusOK || !nextCalled {
+		t.Fatalf("want 200, got %d (called=%v)", rec.Code, nextCalled)
+	}
+}
+

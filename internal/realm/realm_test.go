@@ -75,7 +75,7 @@ func TestResolveModel(t *testing.T) {
 // TestAll 返回稳定顺序的副本，调用方修改不影响内部状态。
 func TestAll(t *testing.T) {
 	got := All()
-	want := []string{Trae, Solo}
+	want := []string{Trae, Solo, TraeIntl, SoloIntl}
 	if len(got) != len(want) {
 		t.Fatalf("All() len=%d want %d", len(got), len(want))
 	}

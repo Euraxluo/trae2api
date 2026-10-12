@@ -32,7 +32,7 @@ const (
 )
 
 // ordered 已知域的稳定顺序（用于控制台/指标列展示，保证输出确定性）。
-var ordered = []string{Trae, Solo}
+var ordered = []string{Trae, Solo, TraeIntl, SoloIntl}
 
 var known = map[string]struct{}{
 	Trae:     {},
