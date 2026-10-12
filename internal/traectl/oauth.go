@@ -231,10 +231,18 @@ type callbackParams struct {
 	ErrorMsg     string `json:"error_msg"`
 }
 
-func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
-	raw := r.URL.RawQuery
-	// 客户端对 query 做了一次 decodeURIComponent 再 parse；
-	// 这里用 url.ParseQuery（它已处理百分号解码），拿不到时再兜底。
+// LoginTraceID 返回该会话的完整 login_trace_id。
+func (s *LoginSession) LoginTraceID() string {
+	return s.loginTraceID
+}
+
+// ProcessCallback 解析回调 URL 或 query 字符串并完成令牌交换。
+// 既可在本地 HTTP 回调到达时调用，也可由远程服务器/容器部署用户手动提交回调 URL 时调用。
+func (s *LoginSession) ProcessCallback(rawInput string) (*CredentialSnapshot, error) {
+	raw := strings.TrimSpace(rawInput)
+	if idx := strings.Index(raw, "?"); idx >= 0 {
+		raw = raw[idx+1:]
+	}
 	vals, err := url.ParseQuery(raw)
 	if err != nil || vals.Get("authCodeInfo") == "" {
 		if decoded, derr := url.QueryUnescape(raw); derr == nil {
@@ -248,27 +256,33 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 	s.rawCallback = raw
 	s.mu.Unlock()
 
-	// 若回调中带有指定 host（如 ug-normal.trae.ai / api.trae.ai），优先采纳
+	// 若回调中带有指定 host（如 ug-normal.trae.ai / api.trae.com.cn），优先采纳
 	if hostParam := strings.TrimSpace(vals.Get("host")); hostParam != "" {
 		if !strings.HasPrefix(hostParam, "http://") && !strings.HasPrefix(hostParam, "https://") {
 			hostParam = "https://" + hostParam
 		}
-		s.apiHost = strings.TrimRight(hostParam, "/")
+		cleanHost := strings.TrimRight(hostParam, "/")
+		// ⚠️ 特殊处理：国际版的 ExchangeToken 必须打向 UGHost（如 ug-normal.trae.ai），
+		// 不能打向 api.trae.ai（后者对 API 路径返回 nginx 404）。如果已经配置了有效的国际版 UGHost，
+		// 不要被 callback query 里的 api.trae.ai 覆盖破坏。
+		if s.Product.Edition == EditionIntl && strings.Contains(cleanHost, "api.trae.ai") && s.apiHost != "" {
+			// 保留既有正确的 s.apiHost
+		} else {
+			s.apiHost = cleanHost
+		}
 	}
 
 	// 错误回调
 	if ec := vals.Get("error_code"); ec != "" {
-		s.fail(fmt.Errorf("traectl: 登录被拒绝（error_code=%s）：%s", ec, vals.Get("error_msg")))
-		writeLoginPage(w, false, "登录未成功："+vals.Get("error_msg"), s.Product.Label)
-		return
+		err := fmt.Errorf("traectl: 登录被拒绝（error_code=%s）：%s", ec, vals.Get("error_msg"))
+		s.fail(err)
+		return nil, err
 	}
 
 	authCode := extractAuthCode(vals.Get("authCodeInfo"))
 	if authCode == "" {
-		// 可能浏览器先访问了别的路径（favicon 等）：不当作失败，继续等
 		if vals.Get("code") == "" && vals.Get("authCode") == "" {
-			writeLoginPage(w, false, "已收到请求但未包含授权码，请回到 Trae 继续完成登录。", s.Product.Label)
-			return
+			return nil, fmt.Errorf("已收到请求但未包含授权码，请确认复制了正确的完整重定向地址")
 		}
 		authCode = firstNonEmptyStr(vals.Get("code"), vals.Get("authCode"))
 	}
@@ -277,13 +291,21 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 	snap, err := s.exchange(authCode, vals.Get("userInfo"))
 	if err != nil {
 		s.fail(err)
-		writeLoginPage(w, false, "换取令牌失败："+err.Error(), s.Product.Label)
-		return
+		return nil, err
 	}
 	s.mu.Lock()
 	s.snapshot = snap
 	s.done = true
 	s.mu.Unlock()
+	return snap, nil
+}
+
+func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
+	_, err := s.ProcessCallback(r.URL.RawQuery)
+	if err != nil {
+		writeLoginPage(w, false, err.Error(), s.Product.Label)
+		return
+	}
 	writeLoginPage(w, true, "账号授权已成功换取凭据并存入网关，您可以关闭此窗口回到控制台。", s.Product.Label)
 }
 

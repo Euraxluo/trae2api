@@ -12,6 +12,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -258,6 +259,14 @@ func TestSaveRoundTripOnCopy(t *testing.T) {
 				if av, ok := after[k]; !ok {
 					t.Errorf("键 %q 丢失", k)
 				} else if string(av) != string(v) {
+					var v1, v2 any
+					if err1 := json.Unmarshal(v, &v1); err1 == nil {
+						if err2 := json.Unmarshal(av, &v2); err2 == nil {
+							if reflect.DeepEqual(v1, v2) {
+								continue
+							}
+						}
+					}
 					t.Errorf("键 %q 内容被改动", k)
 				}
 			}

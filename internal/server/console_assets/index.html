@@ -1045,6 +1045,26 @@
             </div>
           </div>
 
+          <!-- 远程云服务器 / Docker 容器专属提交区 -->
+          <div class="p-3.5 bg-slate-900/90 rounded-2xl border border-indigo-500/30 text-xs space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-indigo-300 font-semibold flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>远程 / Docker 部署专属一键完成</span>
+              </span>
+              <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">100% 成功</span>
+            </div>
+            <p class="text-slate-300 text-[11px] leading-relaxed">
+              若在浏览器完成授权后，网页重定向跳转到 <code class="text-amber-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800">127.0.0.1</code> 提示<b>无法访问此网站 / 连接被拒绝</b>（因网关运行在远程服务器或容器内），请<b>直接复制浏览器地址栏的整串网址</b>粘贴到下方：
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input id="oauthCallbackUrlInput" type="text" placeholder="粘贴跳转后的完整网址（包含 127.0.0.1 或 query 参数）" class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono transition" />
+              <button id="btnSubmitOAuthCallback" onclick="submitManualOAuthCallback()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30 transition whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5">
+                <span>立即提交授权</span>
+              </button>
+            </div>
+          </div>
+
           <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-3">
             <button onclick="closeOAuthModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer">
               ✕ 取消授权并关闭

@@ -79,6 +79,7 @@ func newDialer() *net.Dialer {
 func newTransport() *http.Transport {
 	dialer := newDialer()
 	return &http.Transport{
+		Proxy:       http.ProxyFromEnvironment,
 		DialContext: dialer.DialContext,
 		// 空映射（非 nil）真正禁 h2 —— 见函数注释
 		TLSNextProto:          make(map[string]func(string, *tls.Conn) http.RoundTripper),

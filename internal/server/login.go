@@ -30,6 +30,7 @@ type loginManager struct {
 }
 
 type loginSession struct {
+	mu      sync.Mutex
 	sess    *traectl.LoginSession
 	product string
 	started time.Time
@@ -124,10 +125,10 @@ func (s *Server) handleLoginStart(w http.ResponseWriter, r *http.Request) {
 	// 实测踩过：`www.trae.cn` 按区域封锁（volc-dcdn 返回 403「抱歉，您当前区域不支持访问」），
 	// 而 `api.trae.cn` 不受影响 —— 所以网关读凭据/续期/调模型全都正常，
 	// 只有登录页打不开，极易误判成"网关的 URL 拼错了"。
+	var preflightWarn string
 	if err := loginHostProblem(r.Context(), loginHost); err != nil {
-		s.logf("WARN: OAuth 预检失败（产品 %s）: %v", prod.Label, err)
-		writeOpenAIError(w, http.StatusBadGateway, "login_host_unreachable", err.Error())
-		return
+		s.logf("WARN: OAuth 预检提示（产品 %s）: %v", prod.Label, err)
+		preflightWarn = err.Error()
 	}
 
 	sess, err := traectl.StartLogin(prod, traectl.LoginOptions{
@@ -151,13 +152,17 @@ func (s *Server) handleLoginStart(w http.ResponseWriter, r *http.Request) {
 	// 后台等待结果并在成功时落盘 —— 不依赖前端来"确认保存"。
 	go s.completeLogin(ls)
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	respData := map[string]any{
 		"session_id": sess.ID,
 		"url":        sess.URL,
 		"product":    prod.Key,
 		"expires_in": int(loginWaitTimeout.Seconds()),
 		"hint":       "请在浏览器中完成登录；本页可关闭，网关会在授权完成后自动保存凭据",
-	})
+	}
+	if preflightWarn != "" {
+		respData["preflight_warn"] = preflightWarn
+	}
+	writeJSON(w, http.StatusOK, respData)
 }
 
 // deriveLoginHost 从 UG/API 主机派生登录页主机。
@@ -204,6 +209,11 @@ func (s *Server) completeLogin(ls *loginSession) {
 
 // saveLoginSnapshot 把登录得到的凭据落盘成便携快照并注册进池。
 func (s *Server) saveLoginSnapshot(ls *loginSession, snap *traectl.CredentialSnapshot) error {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+	if ls.saved {
+		return nil
+	}
 	name, err := s.accounts.Add(snap)
 	if err != nil {
 		ls.saveErr = err.Error()
@@ -220,6 +230,96 @@ func (s *Server) saveLoginSnapshot(ls *loginSession, snap *traectl.CredentialSna
 	_ = s.pool.Save()
 	s.logf("INFO: OAuth 登录成功，账号 %s 已保存为 %s 并注册进池", snap.UserID, name)
 	return nil
+}
+
+// handleLoginSubmitCallback POST /admin/login/callback
+//
+// body: {"session_id":"...", "callback_url":"http://127.0.0.1:43029/authorize?..."}
+//
+// 专为远程云服务器/Docker等非本机部署环境设计：
+// 当用户在本地浏览器完成 Trae 官方授权后，浏览器重定向到 http://127.0.0.1:<port>/authorize 报错打不开时，
+// 用户只需将浏览器地址栏的完整 URL（或 query 字符串）粘贴提交，网关立即在后台提取授权码并完成令牌交换与自动落盘入池。
+func (s *Server) handleLoginSubmitCallback(w http.ResponseWriter, r *http.Request) {
+	if !requireAdmin(w, r) {
+		return
+	}
+	var req struct {
+		SessionID   string `json:"session_id"`
+		CallbackURL string `json:"callback_url"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeOpenAIError(w, http.StatusBadRequest, "invalid_request", "请求体格式错误: "+err.Error())
+		return
+	}
+	rawURL := strings.TrimSpace(req.CallbackURL)
+	if rawURL == "" {
+		writeOpenAIError(w, http.StatusBadRequest, "invalid_request", "缺少 callback_url（请粘贴浏览器地址栏中跳转后的完整网址）")
+		return
+	}
+
+	// 查找会话：优先按 session_id，若无则尝试通过 callback 中的 loginTraceID 匹配
+	var ls *loginSession
+	sessID := strings.TrimSpace(req.SessionID)
+	if sessID != "" {
+		ls = s.logins.get(sessID)
+	}
+
+	if ls == nil {
+		s.logins.mu.Lock()
+		for _, candidate := range s.logins.sessions {
+			trace := candidate.sess.LoginTraceID()
+			if trace != "" && strings.Contains(rawURL, trace) {
+				ls = candidate
+				break
+			}
+			if candidate.sess.ID != "" && strings.Contains(rawURL, candidate.sess.ID) {
+				ls = candidate
+				break
+			}
+		}
+		// 若仍未匹配，且当前恰好只有 1 个处于等待中的登录会话，则智能拾取该会话
+		if ls == nil {
+			var waiting []*loginSession
+			for _, candidate := range s.logins.sessions {
+				st := candidate.sess.Status()
+				if st["state"] == "waiting" {
+					waiting = append(waiting, candidate)
+				}
+			}
+			if len(waiting) == 1 {
+				ls = waiting[0]
+			}
+		}
+		s.logins.mu.Unlock()
+	}
+
+	if ls == nil {
+		writeOpenAIError(w, http.StatusNotFound, "session_not_found", "未找到对应的登录会话，可能已超时过期，请重新点击授权发起")
+		return
+	}
+
+	snap, err := ls.sess.ProcessCallback(rawURL)
+	if err != nil {
+		writeOpenAIError(w, http.StatusBadRequest, "exchange_failed", err.Error())
+		return
+	}
+
+	if err := s.saveLoginSnapshot(ls, snap); err != nil {
+		writeOpenAIError(w, http.StatusInternalServerError, "save_failed", "凭据换取成功但保存失败: "+err.Error())
+		return
+	}
+
+	ls.mu.Lock()
+	savedAs, userID := ls.savedAs, ls.userID
+	ls.mu.Unlock()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":    true,
+		"session_id": ls.sess.ID,
+		"product":    ls.product,
+		"user_id":    userID,
+		"saved_as":   savedAs,
+	})
 }
 
 // handleLoginStatus GET /admin/login/status?session_id=...
@@ -247,15 +347,19 @@ func (s *Server) handleLoginStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	st := ls.sess.Status()
 	// 补充落盘结果（前端需要知道"保存到哪个文件了"）
-	st["saved"] = ls.saved
-	if ls.savedAs != "" {
-		st["saved_as"] = ls.savedAs
+	ls.mu.Lock()
+	saved, savedAs, saveErr, userID := ls.saved, ls.savedAs, ls.saveErr, ls.userID
+	ls.mu.Unlock()
+
+	st["saved"] = saved
+	if savedAs != "" {
+		st["saved_as"] = savedAs
 	}
-	if ls.saveErr != "" {
-		st["save_error"] = ls.saveErr
+	if saveErr != "" {
+		st["save_error"] = saveErr
 	}
-	if ls.userID != "" {
-		st["user_id"] = ls.userID
+	if userID != "" {
+		st["user_id"] = userID
 	}
 	writeJSON(w, http.StatusOK, st)
 }

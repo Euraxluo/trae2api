@@ -313,6 +313,7 @@ func (s *Server) handler() http.Handler {
 	mux.HandleFunc("GET /admin/login/status", s.withAuth(s.handleLoginStatus))
 	mux.HandleFunc("POST /admin/login/cancel", s.withAuth(s.handleLoginCancel))
 	mux.HandleFunc("GET /admin/login/sessions", s.withAuth(s.handleLoginList))
+	mux.HandleFunc("POST /admin/login/callback", s.withAuth(s.handleLoginSubmitCallback))
 
 	// 内嵌 DeepSeek Harness (dsh) 智能体（见 dsh.go；install/reset/export 见 dsh_extra.go）。
 	// start/stop 都是幂等的：重复 start 不会产生第二个进程，

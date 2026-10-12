@@ -494,3 +494,69 @@ func TestLoginLiveURLShape(t *testing.T) {
 		t.Logf("[%s] %s", p.Key, s.URL)
 	}
 }
+
+// TestProcessCallbackManualURL 测试云服务器/Docker下手动粘贴浏览器重定向URL完成授权。
+func TestProcessCallbackManualURL(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != exchangePath {
+			t.Errorf("路径 = %q want %q", r.URL.Path, exchangePath)
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body["AuthCode"] != "test-auth-code-123" {
+			t.Errorf("AuthCode = %v want test-auth-code-123", body["AuthCode"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"Result": map[string]any{
+				"Token":            "mock-token-xyz",
+				"RefreshToken":     "mock-refresh-xyz",
+				"ExpiredAt":        "2030-01-01T00:00:00Z",
+				"RefreshExpiredAt": "2030-02-01T00:00:00Z",
+				"UserID":           "916348159159136",
+			},
+		})
+	}))
+	defer mockServer.Close()
+
+	p := Products[0] // trae-cn
+	s, err := StartLogin(p, LoginOptions{
+		LoginHost:   "https://www.trae.cn",
+		APIHost:     mockServer.URL,
+		OpenBrowser: false,
+	})
+	if err != nil {
+		t.Fatalf("StartLogin: %v", err)
+	}
+	defer s.Close()
+
+	if s.LoginTraceID() == "" {
+		t.Error("LoginTraceID 应当非空")
+	}
+
+	// 模拟远程服务器部署时，浏览器重定向到 127.0.0.1:<port> 的完整 URL
+	mockRedirectURL := fmt.Sprintf(
+		"http://127.0.0.1:43029/authorize?isRedirect=true&scope=trae&authCodeInfo=%%7B%%22AuthCode%%22%%3A%%22test-auth-code-123%%22%%2C%%22ExpireAt%%22%%3A1791787473440%%7D&loginTraceID=%s&host=%s&userRegion=cn&userInfo=%%7B%%22UserID%%22%%3A%%22916348159159136%%22%%7D",
+		s.LoginTraceID(),
+		url.QueryEscape(mockServer.URL),
+	)
+
+	snap, err := s.ProcessCallback(mockRedirectURL)
+	if err != nil {
+		t.Fatalf("ProcessCallback 失败: %v", err)
+	}
+	if snap == nil {
+		t.Fatal("snap 为 nil")
+	}
+	if snap.Token != "mock-token-xyz" {
+		t.Errorf("Token = %q want mock-token-xyz", snap.Token)
+	}
+	if snap.UserID != "916348159159136" {
+		t.Errorf("UserID = %q want 916348159159136", snap.UserID)
+	}
+
+	st := s.Status()
+	if st["state"] != "success" {
+		t.Errorf("会话状态 = %v want success", st["state"])
+	}
+}

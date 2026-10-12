@@ -1261,6 +1261,11 @@ async function openOAuthModal(productKey) {
     }
     oauthUrl = String(data.url).trim();
     oauthSession = data.session_id;
+    var cbInput = $('oauthCallbackUrlInput');
+    if (cbInput) cbInput.value = '';
+    if (data.preflight_warn) {
+      toast('预检提示：' + data.preflight_warn, 'warn');
+    }
     var link = $('oauthLinkBtn');
     if (link) link.href = oauthUrl;
     hide('oauthStep1'); show('oauthStep2');
@@ -1270,6 +1275,53 @@ async function openOAuthModal(productKey) {
     if (e && e.name === 'AbortError') return;
     toast('网络请求失败：' + errText(e), 'err');
     closeOAuthModal();
+  }
+}
+
+async function submitManualOAuthCallback() {
+  var input = $('oauthCallbackUrlInput');
+  var raw = input ? input.value.trim() : '';
+  if (!raw) {
+    toast('请先粘贴浏览器跳转后地址栏中的网址', 'warn');
+    if (input) input.focus();
+    return;
+  }
+  var btn = $('btnSubmitOAuthCallback');
+  var oldHTML = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inline-block animate-spin mr-1">⌛</span> 正在换取令牌...';
+  }
+  try {
+    var res = await fetch('/admin/login/callback', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        session_id: oauthSession || '',
+        callback_url: raw
+      })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok || !data.success) {
+      var msg = (data.error && data.error.message) || data.error || ('HTTP ' + res.status);
+      toast('提交授权回调失败：' + msg, 'err');
+      return;
+    }
+    stopPolling();
+    hide('oauthStep2');
+    show('oauthStep3');
+    setText('oauthSuccessDetail', 'UID: ' + (data.user_id || '—') + ' | 已保存为: ' + (data.saved_as || '成功'));
+    toast('账号授权成功并已自动注册进池！', 'ok');
+    await refreshData();
+    setTimeout(closeOAuthModal, 2500);
+  } catch (e) {
+    toast('提交失败：' + errText(e), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldHTML;
+    }
   }
 }
 function copyOAuthUrl() {
