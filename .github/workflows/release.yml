@@ -71,14 +71,24 @@ jobs:
           cd dist
           for f in trae2api-*; do
             case "$f" in
-              *.exe) zip -q "${f%.exe}.zip" "$f" ../README.md ../docker/config.docker.json ;;
+              # ⚠️ zip 必须带 -j：它会把 `../README.md` **原样**存成带 `..` 的条目，
+              # 而 unzip 默认拒绝解压含 `..` 的路径（防目录穿越），
+              # 用户拿到 Windows 包会解压失败。-j 只存文件名，扁平且可解压。
+              *.exe) zip -q -j "${f%.exe}.zip" "$f" ../README.md ../docker/config.docker.json ;;
               *)     tar -czf "$f.tar.gz" "$f" -C .. README.md docker/config.docker.json ;;
             esac
           done
           ls -lh
           # 校验和：让用户能验证下载的二进制没被篡改
+          #
+          # 注意 `trae2api-*` 会把压缩包也算进去（它们同样以 trae2api- 开头）——
+          # 这是刻意的：用户校验压缩包本身同样有意义。
           sha256sum trae2api-* > SHA256SUMS
           cat SHA256SUMS
+          # 自检：压缩包必须非空，且能列出内容 —— 防止"构建成功但包是空的"
+          for a in *.tar.gz; do tar -tzf "$a" >/dev/null || { echo "::error::$a 无法读取"; exit 1; }; done
+          for a in *.zip;    do unzip -tq "$a"  >/dev/null || { echo "::error::$a 无法读取"; exit 1; }; done
+          echo "✅ 全部压缩包可读"
 
       - name: 创建 Release
         uses: softprops/action-gh-release@v2
