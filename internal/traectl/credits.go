@@ -153,6 +153,13 @@ func (s *Store) postUG(ctx context.Context, path string, out any) error {
 	s.mu.Unlock()
 
 	host := strings.TrimRight(cred.Host, "/")
+	// CN 的登录引导配置会把 UG host 给成 api.trae.com.cn，但 ug/checkin_credits
+	// 家族只部署在 api.trae.cn（.com.cn 上全系 404；pay/ent 家族两个 host 都在，
+	// 所以额度刷新一直正常、唯独签到坏——极难定位）。归一到已知可用的 .cn。
+	// httptest 等其他 host 一律不动。
+	if host == "https://api.trae.com.cn" {
+		host = DefaultUGHost
+	}
 	if host == "" {
 		host = DefaultUGHost
 	}
