@@ -42,13 +42,13 @@ func (s *Server) listUsers(w http.ResponseWriter) {
 		out = append(out, map[string]any{
 			"id": u.ID, "username": u.Username,
 			// Key 打码：列表接口不该泄露可用凭证
-			"api_key_masked": usermgr.MaskKey(u.APIKey),
-			"role":           u.Role,
-			"created_at":     u.CreatedAt,
-			"disabled":       u.Disabled,
-			"note":           u.Note,
-			"quota":          u.Quota,
-			"used_quota":     u.UsedQuota,
+			"api_key_masked":  usermgr.MaskKey(u.APIKey),
+			"role":            u.Role,
+			"created_at":      u.CreatedAt,
+			"disabled":        u.Disabled,
+			"note":            u.Note,
+			"quota":           u.Quota,
+			"used_quota":      u.UsedQuota,
 			"model_whitelist": u.ModelWhitelist,
 		})
 	}

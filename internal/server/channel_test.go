@@ -134,4 +134,3 @@ func TestWithAuthConsoleCookie(t *testing.T) {
 		t.Fatalf("want 200, got %d (called=%v)", rec.Code, nextCalled)
 	}
 }
-

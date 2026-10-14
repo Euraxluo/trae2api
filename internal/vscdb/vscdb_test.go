@@ -25,12 +25,21 @@ import (
 //	  console.log(Buffer.byteLength(s,'utf8'),
 //	              require('crypto').createHash('sha256').update(Buffer.from(s,'utf8')).digest('hex'));"
 //
-// 即「value 的 UTF-8 字节长度」与「该字节序列的 SHA-256」。取真值时间：2026-10-09。
+// 即「value 的 UTF-8 字节长度」与「该字节序列的 SHA-256」。
 // 注意 node:sqlite 的 length() 返回字符数，含中文时与字节数不同（例如 TRAE SOLO CN 的
 // 那条是 140196 字符 / 140220 字节），所以下面记的是字节数。
 //
-// 若 Trae 客户端重写 state.vscdb（模型目录随账号/版本变化），这些常量会过期，
-// 需要用上面的命令重新取；届时测试会失败并打印实际值，便于对照更新。
+// # 这些常量会过期，而且**过期不等于代码有缺陷**
+//
+// Trae 客户端会重写 state.vscdb（模型目录随账号/版本变化）。届时本测试会失败，
+// 但**先别改读取器** —— 用上面的命令现读一次：
+//
+//   - 若 node:sqlite 现读的值 == 读取器输出的值 → **只是真值过期**，更新下面的常量即可；
+//   - 若两者不一致 → 才是读取器的真缺陷。
+//
+// 2026-10-13 就是这样一次：客户端在 10-12 更新了模型目录，
+// 「Trae CN / 916348159159136」那条从 134990 字节涨到 149520 字节，
+// 而读取器与 node:sqlite 逐字节一致。当时差点误判成 WAL 未处理。
 
 type realCase struct {
 	dir    string // %APPDATA% 下的目录名
@@ -47,10 +56,14 @@ var realCases = []realCase{
 		sha256: "68cd8fe38e305f78f97c28f6d9e7a28bd881211eb0849231211a85e192676253",
 	},
 	{
-		dir:    "Trae CN",
-		key:    "916348159159136_AI.agent.model.model_list_map",
-		bytes:  134990,
-		sha256: "8f2667cec7eab7c8402fa1aca124066a4620629c6f3b2213e118ffc6e3bd97cc",
+		dir: "Trae CN",
+		key: "916348159159136_AI.agent.model.model_list_map",
+		// 2026-10-13 重取。上一版真值（134990 / 8f2667ce…，取自 2026-10-09）已过期：
+		// Trae 客户端在 10-12 更新了模型目录（新增 Doubao-Seed-Evolving 等），
+		// 导致该 value 变大。**不是读取器的缺陷** —— 同一时刻用 node:sqlite 现读
+		// 得到的就是下面这组值，两者逐字节一致。
+		bytes:  149520,
+		sha256: "96f0ed099297194ebd7189567f6f0c41e4375e4e3ef76a3fdbcb0610b4ad30f4",
 	},
 	{
 		// Trae CN 里另一个账号的模型目录，用来覆盖「同一文件多条 model_list_map」的情形
@@ -102,10 +115,10 @@ func TestRealTraeStateVSCDB(t *testing.T) {
 			sum := sha256.Sum256(val)
 			got := hex.EncodeToString(sum[:])
 			if len(val) != tc.bytes {
-				t.Errorf("长度 %d，node:sqlite 真值 %d", len(val), tc.bytes)
+				t.Errorf("长度 %d，记录的 node:sqlite 真值 %d（若客户端更新过模型目录，先用 node:sqlite 现读核对，别急着改读取器）", len(val), tc.bytes)
 			}
 			if got != tc.sha256 {
-				t.Errorf("SHA-256 %s，node:sqlite 真值 %s", got, tc.sha256)
+				t.Errorf("SHA-256 %s，记录的 node:sqlite 真值 %s（同上：先现读核对）", got, tc.sha256)
 			}
 			if len(val) == tc.bytes && got == tc.sha256 {
 				t.Logf("✓ %s：%d 字节，SHA-256 %s（与 node:sqlite 一致）", tc.key, len(val), got)
