@@ -49,9 +49,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          # 版本号注入二进制：用 -X 覆盖 var（本项目暂无版本变量时是空操作，
-          # 保留它是为了让构建命令在加了版本变量之后无需再改）
-          LDFLAGS="-s -w"
+          # 把 tag 注入二进制，否则 `trae2api version` 报的是源码里的默认值，
+          # 与 Release 标题对不上（用户会以为下错了包）。
+          #
+          # ⚠️ -X 只能改 **string 变量**，改不了常量 ——
+          # 所以 internal/server.Version 必须是 var（见那里的注释）。
+          LDFLAGS="-s -w -X trae2api/internal/server.Version=${VERSION}"
           for target in \
             linux/amd64 linux/arm64 linux/arm \
             windows/amd64 windows/arm64 \

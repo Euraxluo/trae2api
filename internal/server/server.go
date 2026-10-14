@@ -81,7 +81,17 @@ func newPromptRewriter(cfg *config.Config) *prompt.Rewriter {
 }
 
 // Version 网关版本。
-const Version = "0.1.0"
+//
+// ⚠️ 必须是 **var** 而不是 const —— 发布流程用
+// `-ldflags "-X trae2api/internal/server.Version=$TAG"` 注入真实版本号，
+// 而 `-X` **只能改 string 变量，改不了常量**。
+//
+// 曾经这里是 const，于是 release.yml 里那句"-X 覆盖 var"的注释是假的
+// （LDFLAGS 里根本没有 -X），后果是发 v0.2.0 时 Release 标题写着 v0.2.0、
+// 二进制 `version` 却报 0.1.0。发布流程从没跑过，所以一直没人发现。
+//
+// 这个默认值是**本地 go build 出来的**二进制会报的版本（不含 tag 信息）。
+var Version = "0.1.0"
 
 // ServiceName 网关身份标识（/healthz 透出，便于宿主识别"假成功"）。
 const ServiceName = "trae2api"
