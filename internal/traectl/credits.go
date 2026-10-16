@@ -118,11 +118,11 @@ func (u *EntUsage) SumExpiringCredits(within time.Duration, now time.Time) int64
 	return sum
 }
 
-// DefaultExpiringWindow 是"即将过期"的判定窗口。
+// DefaultExpiringWindow 是"即将过期"的判定窗口（30 天：覆盖月度权益包）。
 //
 // 取 7 天：太短（如 1 天）会让绝大多数账号都算出 0（因子失效）；
 // 太长（如 30 天）会让"快过期"失去区分度（几乎所有账号都命中）。
-const DefaultExpiringWindow = 7 * 24 * time.Hour
+const DefaultExpiringWindow = 30 * 24 * time.Hour
 
 // CheckinResult 是签到领取结果。
 type CheckinResult struct {
